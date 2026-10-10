@@ -134,9 +134,9 @@ The template's `.claude/settings.json` registers this repository as a plugin mar
 "enabledPlugins": { "eng-standard@engineering-standard": true }
 ```
 
-Once published, the marketplace is a public GitHub repository, [dean490/engineering-standard](https://github.com/dean490/engineering-standard), so no credential setup is needed: Claude Code clones a public repository over HTTPS without credentials.
+The marketplace is a public GitHub repository, [dean490/engineering-standard](https://github.com/dean490/engineering-standard), so no credential setup is needed: Claude Code clones a public repository over HTTPS without credentials.
 
-1. Keep `ref` on a released tag of this repository. `ref` pins the marketplace, and with it the plugin, to that tag; adopting a new version means changing `ref` and reviewing the diff (constitution IX). **(Owner)** A version can be adopted once its tag, such as `v0.1.0`, is pushed to GitHub. That tag does not exist until publication: this repository has no remote and no tag, so until then the `ref` above names nothing that can be fetched.
+1. Keep `ref` on a released tag of this repository. `ref` pins the marketplace, and with it the plugin, to that tag; adopting a new version means changing `ref` and reviewing the diff (constitution IX). **(Owner)** A version can be adopted once its tag is pushed to GitHub; `v0.1.0` is the first.
 2. On a machine with no SSH key for github.com, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` in the environment Claude Code starts in. For `owner/repo` sources, Claude Code checks whether an SSH key authenticates to github.com and clones over HTTPS if it doesn't; the variable skips that check.
 3. Open the project in Claude Code and accept the workspace trust dialog. Claude Code applies a repository's `extraKnownMarketplaces` only in a folder you've trusted; in an untrusted folder, including a `claude -p` run there, it ignores them without a message. Project `permissions.allow` rules also wait for trust; deny and ask rules apply immediately.
 4. Check: run `/plugin` and confirm `eng-standard` is installed and enabled, or run `claude plugin list` in the shell. `eng-standard` is listed in the marketplace by a relative path, so it loads from the marketplace's copy as soon as the marketplace registers; no separate `claude plugin install` is needed.
@@ -312,16 +312,15 @@ Do everything above, plus:
 
 ## This repository
 
-The standard's own repository follows the same model once it is published as [dean490/engineering-standard](https://github.com/dean490/engineering-standard).
+The standard's own repository follows the same model, published as [dean490/engineering-standard](https://github.com/dean490/engineering-standard).
 
-**Status.** It is not published: no remote and no tag. No wall in this repository has run on a real remote yet.
+**Status.** It is public. CI runs on pull requests and on `main`, the ruleset on `main` is set with the required checks below, and `v0.1.0` is the first release tag, the one the plugin pin names. No wall has yet run in an adopting project.
 
-- **Live now** (local tests only): `node --test plugin/tests/` and `node --test tests/`.
-- **Live after publication:** the CI workflow, the ruleset on `main`, and the release tag the plugin pin names.
+- **Live now:** the tests (`node --test plugin/tests/` and `node --test tests/`), CI, and the ruleset on `main`.
 - **Live after adoption** (hooks and sandbox in a real project session): the plugin's hooks and the template's sandbox settings. They are not active in this repository's own sessions, whose `.claude/settings.json` does not enable the plugin.
 - **On the Owner's machine:** `strictAllowlist` and `core.hooksPath`.
 
-- **The Owner pushes.** The repository's `.claude/settings.json` is the template's sandbox and deny rules without the plugin, so agent sessions here have no route to GitHub either (DECISIONS 12). The Owner pushes and opens pull requests as above.
+- **The Owner pushes.** The repository's `.claude/settings.json` turns on the sandbox with only `registry.npmjs.org` allowed, denies `git push`, and blocks writes to `.github/`, `.githooks/`, and `.env*` files; it doesn't enable the plugin. Agent sessions here have no route to GitHub either (DECISIONS 12). The Owner pushes and opens pull requests as above.
 - **Hooks**: after cloning, run `git config core.hooksPath .githooks` once, outside Claude Code (the sandbox denies writes to `.git/config`), so `.githooks/pre-commit`, a copy of the template's, scans every commit with gitleaks.
 - **CI**: `.github/workflows/ci.yml` runs on pull requests and on pushes to `main`. `.github/dependabot.yml` updates its actions weekly, with a 7-day cooldown.
 - **Ruleset on `main`**, set up as in [GitHub settings](#github-settings-owner), step 1 (rulesets are available for public repositories on every plan), with these required checks, each with **GitHub Actions** as its source:
@@ -335,5 +334,5 @@ The standard's own repository follows the same model once it is published as [de
   | **Plugin validate** | `claude plugin validate --strict` for `./plugin` and `.`, with Claude Code 2.1.286's Linux build, checked against the npm registry's integrity for that version |
 
   This repository has no `guards.yml`: its checks run from the pull request, and the Owner reviews every change to them.
-- Turn on secret scanning and push protection (free for a public repository), Dependabot alerts, and the setting that requires actions pinned to a full-length commit SHA.
+- Under Settings, Advanced Security, turn on **Secret Protection** and **Push protection** (free for a public repository), **Dependabot alerts** (which needs **Dependency graph** on first), and the setting that requires actions pinned to a full-length commit SHA.
 - **Running the tests locally** needs yq v4 on `PATH` (`brew install yq`) for the two pinning-check tests; without it, they are skipped.

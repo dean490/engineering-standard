@@ -77,3 +77,11 @@ First version.
 
 - STANDARD 4.5: the Planner runs `security-reviewer` through `/eng-standard:critic-pass`, which launches it at every phase gate and when the Planner passes `security`; its findings carry `SR-` IDs and are ruled like the Critic's (1.5). Tagged [checked]. The skill's `argument-hint:` gains `[security]`; the review template's **Reviewer** line names both agents.
 - README "Status" and ADOPTING "This repository" no longer count commits.
+- ADOPTING "Consequences to know about" is a table of consequences with where each is specified; ADOPTING and DECISIONS gain role statements; DECISIONS 13 and 15 point to ADOPTING and STANDARD 10.2 instead of restating them. No rule ID, entry number, or fact was removed.
+
+### Published (2026-10-10, brief 11)
+
+- ADOPTING "This repository", **The Owner pushes.**: corrects brief 10's claim that the repository's `.claude/settings.json` is the template's rules without the plugin. It turns on the sandbox with only `registry.npmjs.org` allowed, denies `git push`, and blocks writes to `.github/`, `.githooks/`, and `.env*` files; it doesn't enable the plugin.
+- `critic-pass`: the trigger is an argument. `argument-hint:` is `<scope> [brief path] [spec sections] [gate] [security]`, and step 5 launches `eng-standard:security-reviewer` when the arguments include `gate` or `security`. STANDARD 4.5 says the same; still [checked].
+- README "Status", ADOPTING "This repository" and the marketplace `ref` step: the repository is public at `dean490/engineering-standard`, CI runs on pull requests and on `main`, the `main` ruleset is set with the required checks, and `v0.1.0` is the first release tag. "Live after publication" is gone. No wall has yet run in an adopting project; hooks and the template sandbox are live only after adoption; `strictAllowlist` and `core.hooksPath` are per machine.
+- ADOPTING "This repository": the GitHub settings are named as the settings page labels them: **Secret Protection**, **Push protection**, and **Dependabot alerts**, which needs **Dependency graph** on first.

@@ -5,7 +5,7 @@
 - **Brief:** <path to the brief>
 - **Spec sections:** <sections the scope implements>
 - **Diff range:** <base>..<head>
-- **Reviewer:** eng-standard:critic
+- **Reviewer:** eng-standard:critic and, when run, eng-standard:security-reviewer
 
 ## Findings
 

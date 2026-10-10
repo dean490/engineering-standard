@@ -61,13 +61,19 @@ First version.
 
 ### Claims brought to what the repository backs, skills pins, licence (2026-10-10, brief 09)
 
-- README "Status", ADOPTING "This repository", STANDARD preamble: the repository is not published, and what is live now, after publication, after adoption, and on the Owner's machine is stated (DECISIONS 16).
+- README "Status", ADOPTING "This repository", STANDARD preamble: the repository is not published, and what is live now, after publication, after adoption, and on the Owner's machine is stated.
 - The upstream report of the sandbox read-block bypass is stated once, in DECISIONS 7; STANDARD 3.1, ADOPTING, and this file point to it.
 - STANDARD 1.6, 2.1, 3.3, 3.4, 3.5, 3.7, 4.5, 4.6, 6.5, 8.1, 9.3: tags and clauses name what holds each rule and what only guards it; 3.7 no longer says "fail closed".
-- STANDARD 4.5: the `security-reviewer` agent has no defined invoker; the rule is [practice] until one is ruled (open item).
+- STANDARD 4.5: the `security-reviewer` agent had no defined invoker, so the rule was [practice]; the invoker is ruled in brief 10 (below).
 - The plugin's skills are named with their namespace (`/eng-standard:gate`, `/eng-standard:handoff`) in STANDARD 8.2 and DECISIONS 5 and 10.
 - `templates/docs/SKILLS.md` (new): the skills policy, four allow-listed skills pinned to a full commit, and an empty register (STANDARD 5.6, 8.3; DECISIONS 16); `templates/AGENTS.md` points to it.
 - DECISIONS 16 (external process layers, with revisit triggers) and 17 (permission files inside `templates/`); ADOPTING carries the workflow line.
 - `LICENSE` (MIT) and `"license"` in `plugin/.claude-plugin/plugin.json`; `.claude-plugin/marketplace.json` carries none, because `claude plugin validate --strict` rejects the field there.
 - README: reading order, what this adds, known gaps, prior art.
+- `templates/.claude/settings.json`: the four `Edit` deny rules for `.githooks/`, `.github/`, and the gitleaks files are anchored at the project root (`Edit(/.githooks/**)`, `Edit(/.github/**)`, `Edit(/.gitleaks.toml)`, `Edit(/.gitleaksignore)`), applied by the Owner (DECISIONS 17).
 - Tests: the R2-14 test asserts the anchored `Edit(/.githooks/**)`, `Edit(/.github/**)`, `Edit(/.gitleaks.toml)`, and `Edit(/.gitleaksignore)` forms; a new test requires a 40-hex commit on every allow-list row of `templates/docs/SKILLS.md`.
+
+### Review fixes, the security-reviewer invoker, and removing duplication (2026-10-10, brief 10)
+
+- STANDARD 4.5: the Planner runs `security-reviewer` through `/eng-standard:critic-pass`, which launches it at every phase gate and when the Planner passes `security`; its findings carry `SR-` IDs and are ruled like the Critic's (1.5). Tagged [checked]. The skill's `argument-hint:` gains `[security]`; the review template's **Reviewer** line names both agents.
+- README "Status" and ADOPTING "This repository" no longer count commits.

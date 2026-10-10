@@ -14,7 +14,7 @@ This repository is also a Claude Code plugin marketplace ([`.claude-plugin/marke
 
 ## Status
 
-Not published: no remote, one local commit, no tag. No wall in this repository has run on a real remote yet.
+Not published: no remote and no tag. No wall in this repository has run on a real remote yet.
 
 - **Live now** (local tests only): the plugin's and the templates' tests, below.
 - **Live after publication:** CI, the ruleset on `main`, and the release tag the plugin pin names.

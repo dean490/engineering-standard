@@ -1,0 +1,150 @@
+# CI for the engineering standard's own repository (dean490/engineering-standard).
+# Every job below is a required status check on main (docs/ADOPTING.md, "This
+# repository"). Third-party actions are pinned to full commit SHAs with the
+# version in a comment, and tools downloaded here are checked against a
+# published checksum or the npm registry's integrity before they run.
+
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 24.21.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.21.0
+
+      - name: Plugin tests
+        run: node --test plugin/tests/
+
+      # The pinning check's tests use yq, which is on the ubuntu-24.04 image.
+      - name: Tests of the CI check scripts and template configuration
+        run: node --test tests/
+
+  workflow-lint:
+    name: Workflow lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # actionlint (MIT) from its GitHub release, checked against the release's
+      # published SHA-256. It runs shellcheck on run: scripts because the
+      # ubuntu-24.04 image has shellcheck on PATH.
+      - name: Install actionlint 1.7.12
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum --check --strict
+          tar -xzf actionlint.tar.gz actionlint
+
+      - name: Lint this workflow and both template workflows
+        run: |
+          shellcheck --version
+          "$RUNNER_TEMP/actionlint" -color .github/workflows/ci.yml templates/.github/workflows/ci.yml templates/.github/workflows/guards.yml
+
+  action-pinning:
+    name: Actions pinned to commit SHAs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The template's pinning check over this repository's .github/; yq is on
+      # the ubuntu-24.04 image.
+      - name: Every action is pinned to a full commit SHA or image digest (STANDARD 5.4)
+        run: node templates/scripts/check-action-pins.mjs
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # gitleaks (MIT) from its GitHub release, checked against the release's
+      # published SHA-256, scanning with its built-in rules only.
+      - name: Install gitleaks 8.30.1
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf gitleaks.tar.gz gitleaks
+
+      - name: Scan the full git history for secrets, with the built-in rules
+        run: |
+          printf '[extend]\nuseDefault = true\n' > "$RUNNER_TEMP/gitleaks-builtin.toml"
+          "$RUNNER_TEMP/gitleaks" git --config "$RUNNER_TEMP/gitleaks-builtin.toml" --redact --verbose --exit-code 1 .
+
+  plugin-validate:
+    name: Plugin validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Claude Code's Linux x64 build is the npm package
+      # @anthropic-ai/claude-code-linux-x64, a tarball holding one binary,
+      # package/claude. It is downloaded at a pinned version, a release at least
+      # 7 days old (STANDARD 5.2), and checked against the npm registry's
+      # integrity (sha512) for that version before it runs. No npm install, so
+      # no install scripts run.
+      - name: Install Claude Code 2.1.286
+        env:
+          CLAUDE_CODE_VERSION: 2.1.286
+          CLAUDE_CODE_INTEGRITY: sha512-PnVL8ZCEev3IexLeOc9/QRfqRDUZRgnsaMLdpjlBN0VaieeTrf7mZ2JJi29ue2KAqHvq6SsOadU5G/shnFE4MA==
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o claude.tgz "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-x64/-/claude-code-linux-x64-${CLAUDE_CODE_VERSION}.tgz"
+          actual="sha512-$(openssl dgst -sha512 -binary claude.tgz | base64 -w0)"
+          if [ "$actual" != "$CLAUDE_CODE_INTEGRITY" ]; then
+            echo "Integrity mismatch: expected $CLAUDE_CODE_INTEGRITY, got $actual" >&2
+            exit 1
+          fi
+          tar -xzf claude.tgz package/claude
+          ./package/claude --version
+
+      - name: Validate the plugin and the marketplace
+        run: |
+          "$RUNNER_TEMP/package/claude" plugin validate --strict ./plugin
+          "$RUNNER_TEMP/package/claude" plugin validate --strict .

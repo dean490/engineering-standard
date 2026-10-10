@@ -1,0 +1,9 @@
+@AGENTS.md
+
+## Claude Code
+
+- **Planner**: start the session in plan mode (`claude --permission-mode plan`, or pick Plan in the mode selector before the first prompt). A session that starts in plan mode is a Planner session for its whole life, even after a plan is approved and when resumed: the eng-standard plugin's hooks deny its file edits in this repository and allow only read-only shell commands (read-only git, file viewers, the test and typecheck scripts). Build in a new session; never fork a Planner session (`--fork-session`, `/fork`, `/branch`) to build. A Builder session may switch to plan mode to plan a step and implement it once the plan is approved.
+- **Skills**: `/eng-standard:gate fast` runs the fast gate (typecheck, lint, unit tests); run it before finishing a turn that changed code, or the stop gate asks for it. `/eng-standard:gate <step>` runs the full gate and saves the output under `.recon/<step>/`. `/eng-standard:critic-pass <scope>` runs a Critic pass. `/eng-standard:handoff` updates `docs/PROGRESS.md` at the end of every session.
+- **Phase-gate Critic**: start a separate session with `claude --agent eng-standard:critic`.
+- **Guardrails**: hooks block secret reads, bulk staging, `git commit -m`, skipping git hooks, every `git push` (the Owner pushes), commands that throw away uncommitted work, edits to protected paths, remote Supabase commands, and deploys. The sandbox blocks reading and writing `.env*` files, writing `.github/`, `.githooks/`, and the gitleaks files, and every network host outside the allowlist (the npm registry, plus any host the project adds; never GitHub). When one blocks you, do what its message says; don't look for another route. Write commands out literally: a git command whose name or arguments come from a variable or substitution is blocked.
+- **Model provenance**: commit trailers name the model that actually did the work, or are left out (STANDARD 1.7).

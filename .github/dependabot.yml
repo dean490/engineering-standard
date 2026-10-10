@@ -1,0 +1,11 @@
+# Automated updates for this repository's GitHub Actions. Each pull request
+# goes through CI and is merged by the Owner. The 7-day cooldown matches the
+# standard's release-age delay (STANDARD 5.2).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

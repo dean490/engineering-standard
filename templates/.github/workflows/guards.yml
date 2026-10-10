@@ -1,0 +1,211 @@
+# Guard checks for pull requests (STANDARD 2.4, 3.4, 3.5, 4.6, 5.2, 5.4, 6.2,
+# 9.2): Migrations are append-only, Test integrity, Sensitive change, Actions
+# pinned to commit SHAs, Secret scan, and Release age.
+#
+# They run on pull_request_target, so GitHub takes this workflow from the
+# repository's default branch, never from the pull request, and each job checks
+# out the default branch (actions/checkout's default ref for this event) and
+# runs its copy of the check scripts. A pull request can't change or skip the
+# checks that judge it; a change to them takes effect once it merges, and until
+# then it fails Sensitive change.
+#
+# Each job then fetches the pull request head as git data only
+# (refs/pull/<number>/head) and runs the scripts against
+# origin/<base branch>...<head>. Nothing from the pull request is installed,
+# built, or run: the scripts read it with git, and yq and gitleaks read it as
+# data. Values from the pull request reach run: lines only through env:. No
+# secrets are used, the token is read-only, and nothing is cached.
+#
+# The pull request that first adds this file isn't judged by it (GitHub runs
+# the default branch's copy, which doesn't exist yet), so the Owner merges that
+# one with the override (docs/ADOPTING.md). On a public repository, GitHub's
+# default Actions event policy blocks pull_request_target from 2026-11-02;
+# allow it there in an Actions event policy (docs/ADOPTING.md).
+#
+# The scripts come from the standard's templates/scripts/ and are protected
+# paths. Their Node is the runner image's (ubuntu-24.04: Node 22).
+
+name: Guards
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guards-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  PR_NUMBER: ${{ github.event.pull_request.number }}
+  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+  BASE_REF: ${{ github.event.pull_request.base.ref }}
+
+jobs:
+  migrations-append-only:
+    name: Migrations are append-only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the default branch (the checks that judge this pull request)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch the base branch and the pull request head as git data
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch --no-tags --no-recurse-submodules origin \
+            "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF" "+refs/pull/$PR_NUMBER/head:refs/remotes/pull/head"
+          test "$(git rev-parse refs/remotes/pull/head)" = "$HEAD_SHA" || { echo "The pull request head moved during this run; the newer run judges it." >&2; exit 1; }
+
+      - name: No shipped migration is modified or deleted, and new ones are newer (STANDARD 6.2)
+        run: node scripts/check-migrations-append-only.mjs "origin/$BASE_REF" "$HEAD_SHA"
+
+  test-integrity:
+    name: Test integrity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the default branch (the checks that judge this pull request)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch the base branch and the pull request head as git data
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch --no-tags --no-recurse-submodules origin \
+            "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF" "+refs/pull/$PR_NUMBER/head:refs/remotes/pull/head"
+          test "$(git rev-parse refs/remotes/pull/head)" = "$HEAD_SHA" || { echo "The pull request head moved during this run; the newer run judges it." >&2; exit 1; }
+
+      - name: No test deleted, skipped, focused, postponed, or inverted (STANDARD 2.4)
+        run: node scripts/check-test-integrity.mjs "origin/$BASE_REF" "$HEAD_SHA"
+
+  sensitive-change:
+    name: Sensitive change
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the default branch (the checks that judge this pull request)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch the base branch and the pull request head as git data
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch --no-tags --no-recurse-submodules origin \
+            "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF" "+refs/pull/$PR_NUMBER/head:refs/remotes/pull/head"
+          test "$(git rev-parse refs/remotes/pull/head)" = "$HEAD_SHA" || { echo "The pull request head moved during this run; the newer run judges it." >&2; exit 1; }
+
+      # Fails when the pull request changes what the checks and guards rely on,
+      # and lists it in the job summary. The Owner reads that part of the diff
+      # and merges with the override (STANDARD 3.5, 9.2).
+      - name: package.json scripts, test and lint configuration, .github/, .githooks/, agent settings, secret-scan and supply-chain settings, check scripts
+        run: node scripts/check-sensitive-change.mjs "origin/$BASE_REF" "$HEAD_SHA"
+
+  action-pinning:
+    name: Actions pinned to commit SHAs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the default branch (the checks that judge this pull request)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch the base branch and the pull request head as git data
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch --no-tags --no-recurse-submodules origin \
+            "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF" "+refs/pull/$PR_NUMBER/head:refs/remotes/pull/head"
+          test "$(git rev-parse refs/remotes/pull/head)" = "$HEAD_SHA" || { echo "The pull request head moved during this run; the newer run judges it." >&2; exit 1; }
+
+      # Reads the pull request head's workflow and action files from git with
+      # yq, which is on the ubuntu-24.04 image.
+      - name: Every action is pinned to a full commit SHA or image digest (STANDARD 5.4)
+        run: node scripts/check-action-pins.mjs --rev "$HEAD_SHA"
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the default branch (the checks that judge this pull request)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch the base branch and the pull request head as git data
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch --no-tags --no-recurse-submodules origin \
+            "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF" "+refs/pull/$PR_NUMBER/head:refs/remotes/pull/head"
+          test "$(git rev-parse refs/remotes/pull/head)" = "$HEAD_SHA" || { echo "The pull request head moved during this run; the newer run judges it." >&2; exit 1; }
+
+      # The gitleaks CLI (MIT) is downloaded from its GitHub release and checked
+      # against the release's published SHA-256 before it runs.
+      - name: Install gitleaks 8.30.1
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf gitleaks.tar.gz gitleaks
+
+      # Every commit the pull request adds, with gitleaks's built-in rules only
+      # (--config extends the defaults, so a .gitleaks.toml anywhere is
+      # ignored). The .gitleaksignore that applies is the default branch's, at
+      # the root of this checkout; gitleaks:allow comments in the pull request
+      # still apply, and Sensitive change flags each one it adds.
+      - name: Scan the pull request's commits for secrets, with the built-in rules
+        run: |
+          printf '[extend]\nuseDefault = true\n' > "$RUNNER_TEMP/gitleaks-builtin.toml"
+          merge_base=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
+          "$RUNNER_TEMP/gitleaks" git --config "$RUNNER_TEMP/gitleaks-builtin.toml" --log-opts="$merge_base..$HEAD_SHA" --redact --verbose --exit-code 1 .
+
+  release-age:
+    name: Release age
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the default branch (the checks that judge this pull request)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch the base branch and the pull request head as git data
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch --no-tags --no-recurse-submodules origin \
+            "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF" "+refs/pull/$PR_NUMBER/head:refs/remotes/pull/head"
+          test "$(git rev-parse refs/remotes/pull/head)" = "$HEAD_SHA" || { echo "The pull request head moved during this run; the newer run judges it." >&2; exit 1; }
+
+      # Reads the publish time of each package version the pull request adds to
+      # pnpm-lock.yaml from the npm registry. Dependabot's 7-day cooldown keeps
+      # its pull requests passing.
+      - name: No package version younger than the base branch's minimumReleaseAge (STANDARD 5.2)
+        run: node scripts/check-release-age.mjs "origin/$BASE_REF" "$HEAD_SHA"

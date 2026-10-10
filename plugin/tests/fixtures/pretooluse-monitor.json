@@ -1,0 +1,14 @@
+{
+  "session_id": "abc123",
+  "transcript_path": "/home/user/.claude/projects/.../transcript.jsonl",
+  "cwd": "/home/user/my-project",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Monitor",
+  "tool_input": {
+    "command": "tail -f dev.log | grep --line-buffered ERROR",
+    "description": "errors in dev.log",
+    "timeout_ms": 300000
+  },
+  "tool_use_id": "toolu_01ABC123..."
+}

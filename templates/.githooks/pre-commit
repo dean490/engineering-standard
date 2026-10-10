@@ -1,0 +1,28 @@
+#!/bin/sh
+# Pre-commit secret scan (STANDARD 4.6): gitleaks scans the staged changes and
+# stops the commit if it finds a secret. It stands in for GitHub push
+# protection, which a private repository on GitHub Pro doesn't have; the CI
+# secret scan still runs on every push and pull request.
+#
+# git runs this file because the "prepare" script in package.json sets
+# core.hooksPath to .githooks (docs/ADOPTING.md in the engineering-standard
+# repository). The command is the one gitleaks 8.30.1 ships in its own
+# .pre-commit-hooks.yaml, plus --no-banner and --no-color for plain output and
+# --config with gitleaks's built-in rules, which takes precedence over
+# GITLEAKS_CONFIG, GITLEAKS_CONFIG_TOML, and a repository .gitleaks.toml, so
+# none of those can switch rules off. .gitleaksignore and gitleaks:allow still
+# apply (the CI "Sensitive change" check flags changes to them).
+# Fails closed: without gitleaks, the commit stops.
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is not installed, so the staged changes can't be scanned for secrets." >&2
+  echo "Install it, then commit again:" >&2
+  echo "  macOS:          brew install gitleaks" >&2
+  echo "  Linux and WSL:  a release binary from https://github.com/gitleaks/gitleaks/releases" >&2
+  exit 1
+fi
+
+config=$(mktemp) || exit 1
+trap 'rm -f "$config"' EXIT
+printf '[extend]\nuseDefault = true\n' > "$config"
+gitleaks git --pre-commit --staged --redact --verbose --no-banner --no-color --config "$config"

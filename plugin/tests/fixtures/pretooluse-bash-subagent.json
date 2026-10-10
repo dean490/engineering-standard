@@ -1,0 +1,15 @@
+{
+  "session_id": "abc123",
+  "transcript_path": "/home/user/.claude/projects/.../transcript.jsonl",
+  "cwd": "/home/user/my-project",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "agent_id": "agent-abc123",
+  "agent_type": "eng-standard:critic",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git diff main...HEAD",
+    "description": "Show the diff under review"
+  },
+  "tool_use_id": "toolu_01ABC123..."
+}

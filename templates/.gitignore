@@ -1,0 +1,34 @@
+# Secrets (STANDARD 4.6). .env.example holds variable names only and is committed.
+.env*
+!.env.example
+
+# Evidence from agent sessions (STANDARD 2.2): local raw output, reviewed in place
+.recon/
+
+# Personal Claude Code files
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build and test output
+.next/
+out/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.turbo/
+.vercel/
+playwright-report/
+test-results/
+
+# Local Supabase state
+supabase/.temp/
+supabase/.branches/
+
+# OS and editor files
+.DS_Store
+*.log

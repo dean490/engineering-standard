@@ -1,0 +1,16 @@
+{
+  "name": "engineering-standard",
+  "owner": {
+    "name": "Dean Hebert"
+  },
+  "description": "Claude Code plugin marketplace for the engineering standard: one plugin, eng-standard, the standard's enforcement layer.",
+  "version": "0.1.0",
+  "plugins": [
+    {
+      "name": "eng-standard",
+      "source": "./plugin",
+      "description": "Secret guards, protected paths, commit hygiene, Planner and Critic read-only guards, a stop gate, the Critic and security-reviewer agents, and the gate, handoff, and critic-pass skills.",
+      "category": "engineering-standard"
+    }
+  ]
+}

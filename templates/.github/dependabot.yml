@@ -1,0 +1,24 @@
+# Automated dependency updates (STANDARD 5.5). Each pull request goes through the
+# full CI gate and the guard checks, and is merged by the Owner. The cooldown
+# matches the 7-day minimumReleaseAge in pnpm-workspace.yaml, so an update isn't
+# proposed before pnpm would install it, and the Release age check passes.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

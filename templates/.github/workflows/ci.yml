@@ -1,0 +1,203 @@
+# CI for a project on the engineering standard (STANDARD 2.1, 4.1, 4.2, 5.1,
+# 6.2, 6.3, 9.2). Third-party actions are pinned to full commit SHAs with the
+# version in a comment; Dependabot proposes updates.
+#
+# On a pull request, this file runs the jobs that must run the pull request's
+# own code: Gate and Dependency audit. The guard checks (Migrations are
+# append-only, Test integrity, Sensitive change, Actions pinned to commit SHAs,
+# Secret scan, Release age) run from the base branch in guards.yml, so a pull
+# request can't change or skip them. A pull request that edits this file to
+# skip a job here fails Sensitive change there. On a push to main, the jobs
+# below that end in "on main" run the same checks on what was pushed; their
+# names differ from the required checks, so a job skipped here on a pull
+# request can't stand in for one (docs/ADOPTING.md lists the required checks
+# and the workflow that produces each).
+#
+# The project's package.json provides: "packageManager" (pnpm version),
+# "engines.node" (Node version), and the scripts typecheck, lint, test, build,
+# and, when a supabase/ directory exists, test:integration. The checks in
+# scripts/ come from the standard's templates/scripts/ and are protected paths.
+
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to a pull request cancels the older run; a run on main always
+# finishes, so every push to main gets a verdict.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gate:
+    name: Gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm (version from package.json "packageManager")
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node (version from package.json "engines.node")
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Install from the lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Unit tests
+        run: pnpm run test
+
+      # Database steps run only when the project has a supabase/ directory.
+      # The Supabase CLI is never a project dependency (docs/ADOPTING.md): the
+      # version is pinned here, a release at least 7 days old (STANDARD 5.2).
+      # Dependabot doesn't update this input; change it by hand.
+      - name: Set up the Supabase CLI
+        if: hashFiles('supabase/**') != ''
+        uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
+        with:
+          version: 2.119.0
+
+      - name: Start local Supabase
+        if: hashFiles('supabase/**') != ''
+        run: supabase start
+
+      - name: Replay all migrations from an empty database
+        if: hashFiles('supabase/**') != ''
+        run: supabase db reset --local
+
+      # psql is on the ubuntu-24.04 image (PostgreSQL 16).
+      - name: Row-level security on every table and view the Data API may expose
+        if: hashFiles('supabase/**') != ''
+        run: node scripts/check-rls.mjs
+
+      - name: Integration tests, including row-level security isolation
+        if: hashFiles('supabase/**') != ''
+        run: pnpm run test:integration
+
+      - name: Build
+        run: pnpm run build
+
+      # A backstop (STANDARD 4.2): CI builds without secrets, so this sees only a
+      # key written into the repository. Set CLIENT_BUNDLE_DIR in env for a
+      # client build directory other than .next/static, or to "none" for a
+      # project with no client.
+      - name: Client bundle has no privileged key
+        run: node scripts/check-client-bundle.mjs
+
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm (version from package.json "packageManager")
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node (version from package.json "engines.node")
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: package.json
+
+      - name: Audit dependencies for high and critical advisories
+        run: pnpm audit --audit-level high
+
+  # Push to main: the guard checks again, for everything the push brought in.
+
+  secret-scan-main:
+    name: Secret scan on main
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The gitleaks CLI (MIT) is downloaded from its GitHub release and checked
+      # against the release's published SHA-256 before it runs. It scans with
+      # its built-in rules only: --config names a file that extends the default
+      # configuration, so a .gitleaks.toml in the repository is ignored (gitleaks
+      # 8.30.1 has no flag that ignores it). .gitleaksignore entries and
+      # gitleaks:allow comments still apply; the Sensitive change check makes the
+      # Owner merge any change to them deliberately.
+      - name: Install gitleaks 8.30.1
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf gitleaks.tar.gz gitleaks
+
+      - name: Scan the full git history for secrets, with the built-in rules
+        run: |
+          printf '[extend]\nuseDefault = true\n' > "$RUNNER_TEMP/gitleaks-builtin.toml"
+          "$RUNNER_TEMP/gitleaks" git --config "$RUNNER_TEMP/gitleaks-builtin.toml" --redact --verbose --exit-code 1 .
+
+  migrations-main:
+    name: Migrations are append-only on main
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Every commit the push brought in, from the commit main pointed at before
+      # the push to the commit pushed. "before" is all zeros only when the push
+      # created main.
+      - name: No shipped migration is modified or deleted, and new ones are newer (STANDARD 6.2)
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ "$BEFORE" = 0000000000000000000000000000000000000000 ]; then
+            echo "This push created main: nothing shipped before it."
+          else
+            node scripts/check-migrations-append-only.mjs "$BEFORE" "$AFTER"
+          fi
+
+  action-pinning-main:
+    name: Actions pinned on main
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # yq, which the check uses, is on the ubuntu-24.04 image.
+      - name: Every action is pinned to a full commit SHA or image digest (STANDARD 5.4)
+        run: node scripts/check-action-pins.mjs

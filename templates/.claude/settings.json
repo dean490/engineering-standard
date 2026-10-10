@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "autoCompactWindow": 200000,
+  "disableClaudeAiConnectors": true,
+  "permissions": {
+    "deny": [
+      "Read(.env*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gcloud/**)",
+      "Read(~/.azure/**)",
+      "Read(~/.supabase/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.git-credentials)",
+      "Read(~/.npmrc)",
+      "Read(~/.netrc)",
+      "Read(~/.docker/config.json)",
+      "Read(~/Library/Application Support/com.vercel.cli/**)",
+      "Read(~/.local/share/com.vercel.cli/**)",
+      "Read(~/.now/**)",
+      "Edit(.env*)",
+      "Edit(.githooks/**)",
+      "Edit(.github/**)",
+      "Edit(.gitleaks.toml)",
+      "Edit(.gitleaksignore)",
+      "Edit(/.git/config)",
+      "Edit(/.git/config.worktree)",
+      "Edit(/.git/hooks/**)",
+      "Edit(.recon/current-brief-paths.txt)",
+      "Bash(git push*)",
+      "Bash(git add -A*)",
+      "Bash(git add .)",
+      "Bash(git add . *)",
+      "Bash(git add --all*)",
+      "Bash(git branch -D*)",
+      "Bash(git reset --hard*)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(supabase db push*)",
+      "Bash(vercel --prod*)",
+      "Bash(vercel deploy --prod*)"
+    ],
+    "ask": [
+      "Bash(git commit*)"
+    ],
+    "allow": [
+      "Bash(pnpm test*)",
+      "Bash(pnpm run test*)",
+      "Bash(pnpm run typecheck*)",
+      "Bash(pnpm run lint*)",
+      "Bash(pnpm run build*)",
+      "Bash(pnpm run gate*)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "excludedCommands": [
+      "/opt/homebrew/bin/supabase start *",
+      "/opt/homebrew/bin/supabase stop *",
+      "/opt/homebrew/bin/supabase status *",
+      "/opt/homebrew/bin/supabase db reset --local *",
+      "/opt/homebrew/bin/supabase db diff --local *",
+      "/opt/homebrew/bin/supabase test db --local *",
+      "/opt/homebrew/bin/supabase gen types --local *"
+    ],
+    "filesystem": {
+      "denyWrite": [
+        "./.githooks",
+        "./.github",
+        "./.gitleaks.toml",
+        "./.gitleaksignore",
+        "./.env*",
+        "./**/.env*"
+      ],
+      "denyRead": [
+        "./.env*",
+        "./**/.env*"
+      ]
+    },
+    "credentials": {
+      "envVars": [
+        { "name": "GITHUB_TOKEN", "mode": "deny" },
+        { "name": "GH_TOKEN", "mode": "deny" },
+        { "name": "NPM_TOKEN", "mode": "deny" },
+        { "name": "SUPABASE_ACCESS_TOKEN", "mode": "deny" },
+        { "name": "VERCEL_TOKEN", "mode": "deny" }
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "registry.npmjs.org"
+      ],
+      "allowLocalBinding": true
+    }
+  },
+  "extraKnownMarketplaces": {
+    "engineering-standard": {
+      "source": {
+        "source": "github",
+        "repo": "dean490/engineering-standard",
+        "ref": "v0.1.0"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "eng-standard@engineering-standard": true
+  }
+}

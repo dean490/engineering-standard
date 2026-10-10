@@ -1,0 +1,27 @@
+# Supply-chain settings: STANDARD §5.2, §5.3.
+# Requires pnpm >= 10.26.0 (see docs/ADOPTING.md for why the template pins the 10.x line).
+# pnpm reads these settings from this file. .npmrc holds only auth and registry
+# settings, so this project needs no .npmrc for them.
+
+# New package versions wait 7 days (the value is in minutes) before pnpm installs them.
+# To take a security fix sooner, list the package or exact version here, and record
+# the reason in docs/DECISIONS.md:
+#   minimumReleaseAgeExclude:
+#     - some-package@1.2.3
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude: []
+
+# Only packages set to true here may run install scripts. A package with build
+# scripts that is not listed fails the install (strictDepBuilds), so a new or
+# compromised install script cannot run unreviewed. Add entries by name:
+#   allowBuilds:
+#     esbuild: true
+allowBuilds: {}
+strictDepBuilds: true
+
+# Refuse a version whose publish trust evidence is weaker than an earlier release
+# (for example, trusted publishing replaced by no provenance).
+trustPolicy: no-downgrade
+
+# Transitive dependencies may not come from git repositories or tarball URLs.
+blockExoticSubdeps: true

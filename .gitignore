@@ -1,0 +1,10 @@
+# Evidence from agent sessions (STANDARD 2.2): local raw output, reviewed in place
+.recon/
+
+# Personal Claude Code files
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Dependencies and OS files
+node_modules/
+.DS_Store

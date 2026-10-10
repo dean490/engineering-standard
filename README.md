@@ -14,14 +14,13 @@ This repository is also a Claude Code plugin marketplace ([`.claude-plugin/marke
 
 ## Status
 
-Not published: no remote and no tag. No wall in this repository has run on a real remote yet.
+Public at [dean490/engineering-standard](https://github.com/dean490/engineering-standard). CI runs on pull requests and on `main`, the `main` ruleset is set with the required checks, and `v0.1.0` is the first release tag. No wall has yet run in an adopting project.
 
-- **Live now** (local tests only): the plugin's and the templates' tests, below.
-- **Live after publication:** CI, the ruleset on `main`, and the release tag the plugin pin names.
+- **Live now:** the plugin's and the templates' tests, below, CI, and the ruleset on `main`.
 - **Live after adoption** (hooks and sandbox in a real project session): the plugin's hooks and the template's sandbox settings. They are not active in this repository's own sessions.
 - **On the Owner's machine:** `strictAllowlist` and `core.hooksPath`.
 
-This repository contains no secrets. Once published, changes go through pull requests, which the Owner pushes and merges, and its CI runs the tests, lints the workflows, checks action pinning, scans for secrets, and validates the plugin (`docs/ADOPTING.md`, "This repository").
+This repository contains no secrets. Changes go through pull requests, which the Owner pushes and merges, and its CI runs the tests, lints the workflows, checks action pinning, scans for secrets, and validates the plugin (`docs/ADOPTING.md`, "This repository").
 
 ## Reading order
 

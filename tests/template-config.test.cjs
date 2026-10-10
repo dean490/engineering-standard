@@ -70,8 +70,16 @@ test('R2-4 settings: .env* files can\'t be written, renamed, or read, at any dep
 });
 
 test('R2-14 settings: Claude\'s file tools can\'t change .githooks/, .github/, or the gitleaks files', () => {
-  for (const r of ['Edit(.githooks/**)', 'Edit(.github/**)', 'Edit(.gitleaks.toml)', 'Edit(.gitleaksignore)']) assert.ok(deny.includes(r), r);
+  for (const r of ['Edit(/.githooks/**)', 'Edit(/.github/**)', 'Edit(/.gitleaks.toml)', 'Edit(/.gitleaksignore)']) assert.ok(deny.includes(r), r);
   for (const p of ['./.githooks', './.github', './.gitleaks.toml', './.gitleaksignore']) assert.ok(settings.sandbox.filesystem.denyWrite.includes(p), p);
+});
+
+test('skills policy: every allow-list row in templates/docs/SKILLS.md pins a 40-hex commit', () => {
+  const section = /\n## Allow-list\n([\s\S]*?)(?=\n## |$)/.exec(read('templates/docs/SKILLS.md'));
+  assert.ok(section, 'an "## Allow-list" section');
+  const rows = section[1].split('\n').filter((l) => l.startsWith('| `'));
+  assert.ok(rows.length > 0, 'at least one allow-list row');
+  for (const row of rows) assert.match(row, /(?<![0-9a-f])[0-9a-f]{40}(?![0-9a-f])/, row);
 });
 
 test('R2-15 settings: more credential stores unreadable, token variables removed from sandboxed commands', () => {

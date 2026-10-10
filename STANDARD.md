@@ -11,6 +11,8 @@ How the constitution is carried out on every project. Each rule names how it is 
 
 Every protection that matters has a wall behind it. Guardrails stay because they stop most real mistakes early and cheaply.
 
+`[enforced]` describes a project once the GitHub settings in `docs/ADOPTING.md` are made.
+
 Exact configuration lives in `templates/` and `plugin/`. This file says what must be true.
 
 ---
@@ -29,13 +31,13 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 
 1.5 **Findings get IDs and a ruling.** Every Critic finding has an ID, a severity, and a Planner ruling (fix, defer with reason, or reject with reason), recorded in that pass's review file. [checked]
 
-1.6 **Owner approves**: every push to `main`, every deploy, every production data or schema change, every credential, every purchase, every publication. The Owner pushes, opens pull requests, and merges; agents commit only with the Owner's approval and never push. [enforced for pushes to `main` and deploys: agent sessions have no route to GitHub (the sandbox's network allowlist, 3.3), and the ruleset on `main` takes changes only through a pull request with the required checks (9.1); checked for production data, schema, and credentials: no production credentials on development machines (3.8); guarded: deny rules and the commit-hygiene hook, which block every `git push`; no standing approvals (3.4)]
+1.6 **Owner approves**: every push to `main`, every deploy, every production data or schema change, every credential, every purchase, every publication. The Owner pushes, opens pull requests, and merges; agents commit only with the Owner's approval and never push. [enforced for pushes to `main` and deploys: agent sessions have no route to GitHub (the sandbox's network allowlist, 3.3), and the ruleset on `main` takes changes only through a pull request with the required checks (9.1); checked, by the Owner at adoption and at each phase gate, for production data, schema, and credentials: no production credentials on development machines (3.8); guarded: deny rules and the commit-hygiene hook, which block every `git push`; no standing approvals (3.4)]
 
 1.7 **Model provenance.** Commit trailers and records name the model that actually did the work, or are omitted. Never a default. [practice]
 
 ## 2. Verification gates
 
-2.1 **The gate.** One command per project runs, in order: install from lockfile, typecheck, lint, unit tests, integration tests (where a database is involved), build. Output goes to a file. [enforced: CI required check; guarded: the stop-gate hook asks a Builder session to run the fast gate before it finishes with uncommitted changes]
+2.1 **The gate.** One command per project runs, in order: install from lockfile, typecheck, lint, unit tests, integration tests (where a database is involved), build. Output goes to a file. [enforced: CI required check Gate, once the ruleset exists (9.1); guarded: the stop-gate hook asks a Builder session to run the fast gate before it finishes with uncommitted changes. It blocks once per stop and its record is forgeable, so it is a reminder and the wall is the CI Gate check (DECISIONS 10)]
 
 2.2 **Evidence, not summaries.** Builder reports carry raw command output with exit codes, saved under `.recon/<step>/`. The Planner reviews the files. [checked]
 
@@ -47,19 +49,19 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 
 ## 3. Agent guardrails (Claude Code configuration)
 
-3.1 **No real secrets within agents' reach.** On a machine where agents run, `.env*` and key files in a project hold only local, non-secret values (the local Supabase URL and keys, local ports). Real secrets live only in the hosting provider (4.6), and production credentials stay off the machine (3.8). [checked: the Owner, at adoption and at each phase gate] Reads of `.env*`, key files, and credential stores are also denied, and tool output is scanned for secret patterns and blocked if one appears. [guarded: the sandbox's read block for shell commands (`sandbox.filesystem.denyRead`, the `Read` deny rules it takes in, and `sandbox.credentials`), the `Read` deny rules for Claude's file tools, and the secret-guard hooks. Known gap: the sandbox's read block has a known bypass for shell commands, reported to Anthropic in October 2026. The wall is the first half of this rule: there is no real secret to read.]
+3.1 **No real secrets within agents' reach.** On a machine where agents run, `.env*` and key files in a project hold only local, non-secret values (the local Supabase URL and keys, local ports). Real secrets live only in the hosting provider (4.6), and production credentials stay off the machine (3.8). [checked: the Owner, at adoption and at each phase gate] Reads of `.env*`, key files, and credential stores are also denied, and tool output is scanned for secret patterns and blocked if one appears. [guarded: the sandbox's read block for shell commands (`sandbox.filesystem.denyRead`, the `Read` deny rules it takes in, and `sandbox.credentials`), the `Read` deny rules for Claude's file tools, and the secret-guard hooks. Known gap: the sandbox's read block has a known bypass for shell commands, reported to Anthropic and not known to be fixed (see DECISIONS 7). The wall is the first half of this rule: there is no real secret to read.]
 
 3.2 **Destructive and outward commands are denied by default:** every push, bulk `git add`, branch deletion, `rm -rf` outside the workspace, piping downloads into a shell, production database commands, deploys. [guarded: deny rules and the commit-hygiene hook; walls: the sandbox's network allowlist, which gives agent sessions no route to GitHub or the hosting provider (3.3), the sandbox's file blocks (3.3), and the ruleset on `main` (9.1); checked: no production credentials on development machines (3.8)]
 
-3.3 **Shell commands run in the sandbox**, with network access limited to an allowlist: the package registry and the project's own services, never GitHub (1.6). [enforced: sandbox settings, with `failIfUnavailable` and no unsandboxed retry; on the Owner's machine, `strictAllowlist` in the user settings refuses every host outside the allowlist in every permission mode. Exception: the local Supabase stack. The Supabase CLI, installed outside the project, leaves the sandbox by its absolute path for the local-stack commands only, and the stack runs agent-written SQL (migrations, seed) and Edge Functions in Docker, outside the sandbox and its network allowlist (DECISIONS 14)]
+3.3 **Shell commands run in the sandbox**, with network access limited to an allowlist: the package registry and the project's own services, never GitHub (1.6). [enforced: sandbox settings, with `failIfUnavailable` and no unsandboxed retry; checked: `strictAllowlist`, which refuses every host outside the allowlist in every permission mode, is set in the Owner's user settings, not in the repository, and the live check "no route to GitHub" in ADOPTING shows the allowlist refusing GitHub in the Owner's session; nothing reads the key itself. Exception: the local Supabase stack. The Supabase CLI, installed outside the project, leaves the sandbox by its absolute path for the local-stack commands only, and the stack runs agent-written SQL (migrations, seed) and Edge Functions in Docker, outside the sandbox and its network allowlist (DECISIONS 14)]
 
-3.4 **No standing approvals for anything in 1.6.** Allowlists cover read-only and routine local commands only, and live in the committed project settings, not accumulated one-offs. [enforced for the committed settings: the CI check Sensitive change makes the Owner merge any change to `.claude/settings.json` deliberately; checked for accumulated one-offs: at each phase gate, the Critic reviews `.claude/settings.local.json` and the user settings' `permissions.allow`]
+3.4 **No standing approvals for anything in 1.6.** Allowlists cover read-only and routine local commands only, and live in the committed project settings, not accumulated one-offs. [enforced for the committed settings: the CI check Sensitive change makes the Owner merge any change to `.claude/settings.json` deliberately, and sees committed settings only: user and local settings are the Owner's (3.3); checked for accumulated one-offs: at each phase gate, the Critic reviews `.claude/settings.local.json` and the user settings' `permissions.allow`]
 
-3.5 **Protected paths.** Shipped migrations, the lockfile (except through the package manager), the standard's CI check scripts, and agent settings cannot be edited by the Builder without an explicit brief that names them. Everything under `.github/` (workflows, local actions) and `.githooks/`, and the secret-scan configuration (`.gitleaks.toml`, `.gitleaksignore`), are edited by the Owner only. So are git's own `.git/config` and `.git/hooks/`, which the Owner's terminal git reads and runs with the Owner's credentials (1.6). [guarded: the protect-paths hook and the `Edit` deny rules on Claude's file tools for `.git/config`, `.git/config.worktree`, and `.git/hooks/`; walls: the sandbox's write block on `.github/`, `.githooks/`, the gitleaks files, `.git/config`, and `.git/hooks/`, the CI checks Migrations are append-only (6.2) and Sensitive change, which run from the base branch, and CI's frozen-lockfile install (5.1). Known limit: the `Edit` rules anchor at the session's primary working directory, so in a linked worktree the shared `.git` is outside them and only Claude Code's protected-path handling applies; `.git` is a protected directory, so in auto mode a write there routes to the permission classifier instead of being denied (`.recon/brief-04/docs-cc-permission-modes.md`, "Protected paths", and `docs-cc-permissions.md:374`)]
+3.5 **Protected paths.** Shipped migrations, the lockfile (except through the package manager), the standard's CI check scripts, and agent settings cannot be edited by the Builder without an explicit brief that names them. Everything under `.github/` (workflows, local actions) and `.githooks/`, and the secret-scan configuration (`.gitleaks.toml`, `.gitleaksignore`), are edited by the Owner only. So are git's own `.git/config` and `.git/hooks/`, which the Owner's terminal git reads and runs with the Owner's credentials (1.6). An `Edit` deny rule is merged into the sandbox's write block, so no deny rule may cover a path a tool or git must write: denying all of `.git` breaks `git add`, which is why the rules name `config`, `config.worktree`, and `hooks/` and nothing wider. [guarded: the protect-paths hook and the `Edit` deny rules on Claude's file tools for `.git/config`, `.git/config.worktree`, and `.git/hooks/`; walls: the sandbox's write block on `.github/`, `.githooks/`, the gitleaks files, `.git/config`, and `.git/hooks/`, the CI checks Migrations are append-only (6.2) and Sensitive change, which run from the base branch, and CI's frozen-lockfile install (5.1). Known limit: the `Edit` rules anchor at the session's primary working directory, so in a linked worktree the shared `.git` is outside them and only Claude Code's protected-path handling applies; `.git` is a protected directory, so in auto mode a write there routes to the permission classifier instead of being denied (`.recon/brief-04/docs-cc-permission-modes.md`, "Protected paths", and `docs-cc-permissions.md:374`)]
 
 3.6 **Instructions are portable.** `AGENTS.md` is the project's instruction file for every agent tool; `CLAUDE.md` imports it and adds only Claude-specific notes. [practice]
 
-3.7 **Hooks are portable and fail safely.** Paths resolve from the project directory, never a user's home path. Security hooks fail closed (block when unsure); convenience hooks fail open. [checked]
+3.7 **Hooks are portable and fail safely.** Paths resolve from the project directory, never a user's home path. Security hooks are written to block when unsure (exit 2); convenience hooks to allow. A hook that cannot start (no `node`, a crash) does not block, because Claude Code treats any exit other than 2 as non-blocking. A hook is a guard, never a wall; the adoption live check confirms hooks fire. [checked]
 
 3.8 **Production credentials stay off development machines.** Production credentials (database, hosting) are not stored on development machines. Production changes run through CI or by the Owner. [checked: the Owner, at adoption and at each phase gate]
 
@@ -73,9 +75,9 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 
 4.4 **AI features treat model input as untrusted.** Content from users, the web, or imports is passed to models as data. Tools a model can call enforce their own permissions; a model can never loosen a safety setting. Prompts and responses containing private data are not logged. Model versions are pinned. [checked]
 
-4.5 **Security review.** Run the security review on every phase gate and on any change touching auth, permissions, payments, or AI tool access. [checked]
+4.5 **Security review.** Run the security review on every phase gate and on any change touching auth, permissions, payments, or AI tool access. No invoker is defined yet: the plugin ships a `security-reviewer` agent, but no skill or step in this standard launches it (`critic-pass` launches only the Critic, 1.4). [practice]
 
-4.6 **Secrets** live in the hosting provider's environment settings or a secrets manager, never in the repo, synced folders, agent settings, or a project file on a machine where agents run (3.1). Secret scanning with push protection is on for every repository. [enforced: the CI secret scan with gitleaks's built-in rules, run from the base branch on pull requests, and GitHub push protection where the plan offers it; guarded: the local pre-commit scan]
+4.6 **Secrets** live in the hosting provider's environment settings or a secrets manager, never in the repo, synced folders, agent settings, or a project file on a machine where agents run (3.1). Secret scanning with push protection is on for every repository where GitHub offers it. A private repository owned by a personal account gets neither (ADOPTING, GitHub settings), so there the stand-ins are the local pre-commit scan [guarded] and the CI secret scan [enforced] once the ruleset exists. [enforced: the CI secret scan with gitleaks's built-in rules, run from the base branch on pull requests, and GitHub push protection where the plan offers it; guarded: the local pre-commit scan, which runs only where `core.hooksPath` has been set outside Claude Code and which `--no-verify` bypasses, so the wall is the CI secret scan]
 
 ## 5. Supply chain
 
@@ -89,7 +91,7 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 
 5.5 **Dependency updates** arrive as automated pull requests, go through the full gate, and are merged by the Owner. [enforced: Dependabot plus the ruleset on `main`]
 
-5.6 **Agent extensions are dependencies.** Skills, plugins, and MCP servers are read in full before install, committed or pinned, and their updates reviewed as diffs. Official publishers first. [checked; procedure in the skills policy]
+5.6 **Agent extensions are dependencies.** Skills, plugins, and MCP servers are read in full before install, committed or pinned, and their updates reviewed as diffs. Official publishers first. [checked; procedure and allow-list in `templates/docs/SKILLS.md`]
 
 ## 6. Data and migrations
 
@@ -101,7 +103,7 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 
 6.4 **Order of environments:** local, then staging, then production. Production schema changes are an Owner approval. [checked: no production credentials on development machines (3.8), so production migrations are applied by the Owner or a CI deploy job]
 
-6.5 **Every table that holds user data** references its owner (tenant, household, or user) and has row-level security from its first migration. [checked; enforced by the RLS test in 4.1]
+6.5 **Every table that holds user data** references its owner (tenant, household, or user) and has row-level security from its first migration. [practice for the owner reference, which no check reads; enforced for row-level security by the RLS check in 4.1]
 
 ## 7. Operations
 
@@ -115,9 +117,9 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 
 ## 8. Documents and state
 
-8.1 **Always-loaded instructions stay short.** `AGENTS.md` under about 200 lines; no `@`-imports of large documents. Specs, runbooks, and history are read on demand. [checked; `/doctor`-style size check at phase gates]
+8.1 **Always-loaded instructions stay short.** `AGENTS.md` under about 200 lines; no `@`-imports of large documents. Specs, runbooks, and history are read on demand. [checked: a size read from `wc -l` and `wc -c` at each phase gate; no script ships]
 
-8.2 **One state file.** `docs/PROGRESS.md` holds current state: phase, last step, what is deployed where, next step, open items. Other documents link to it instead of restating state. Updated by the `/handoff` skill at the end of every session, and kept under about 60 lines: history moves to `docs/archive/` (8.3). [practice, made routine by the skill]
+8.2 **One state file.** `docs/PROGRESS.md` holds current state: phase, last step, what is deployed where, next step, open items. Other documents link to it instead of restating state. Updated by the `/eng-standard:handoff` skill at the end of every session, and kept under about 60 lines: history moves to `docs/archive/` (8.3). [practice, made routine by the skill]
 
 8.3 **Standard document set:**
 - `docs/SPEC.md`: what is being built (split by area when it grows past one reading).
@@ -125,6 +127,7 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 - `docs/DEVIATIONS.md`: intentional differences from the spec.
 - `docs/PROGRESS.md`: current state (8.2).
 - `docs/OPERATIONS.md`: environments, backups, runbooks.
+- `docs/SKILLS.md`: the agent-skills allow-list, pins, and register of what is installed (5.6).
 - `docs/reviews/<date>-<scope>.md`: one file per Critic pass with findings and rulings.
 - `docs/archive/`: session logs and superseded documents, by quarter.
 
@@ -136,7 +139,7 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 
 9.2 **CI runs the full gate** (2.1), the migration replay (6.3), the row-level security check and isolation tests (4.1), the client bundle backstop (4.2), and the dependency audit on the pull request's code. On pull requests, the guard checks run from the base branch, so a pull request can't change or skip them: secret scanning (4.6), action pinning (5.4), the append-only migration check (6.2), Release age (5.2), Test integrity (2.4), and Sensitive change (3.4, 3.5). On a push to `main`, secret scanning, action pinning, and the migration check run again on what was pushed. [enforced]
 
-9.3 **Commits** are staged by name, messages written to a file and committed with `-F`, subjects of 72 characters or less. [guarded: the commit-hygiene hook for bulk staging and `-m`; walls: the Owner's review at merge and the protected `main` (9.1); practice for the rest]
+9.3 **Commits** are staged by name, messages written to a file and committed with `-F`, subjects of 72 characters or less. [guarded: the commit-hygiene hook for bulk staging and `-m`, whose block message states the 72-character subject limit but does not measure it; walls: the Owner's review at merge and the protected `main` (9.1); practice for the subject length and the trailers]
 
 ## 10. Context and cost
 

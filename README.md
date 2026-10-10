@@ -12,7 +12,35 @@ How projects built with AI agents are run: what must be true, how each rule is c
 
 This repository is also a Claude Code plugin marketplace ([`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json)) with one plugin, `eng-standard`.
 
-This repository is public and contains no secrets. Issues and changes go through pull requests, which the Owner pushes and merges; its own CI runs the tests, lints the workflows, checks action pinning, scans for secrets, and validates the plugin (`docs/ADOPTING.md`, "This repository").
+## Status
+
+Not published: no remote, one local commit, no tag. No wall in this repository has run on a real remote yet.
+
+- **Live now** (local tests only): the plugin's and the templates' tests, below.
+- **Live after publication:** CI, the ruleset on `main`, and the release tag the plugin pin names.
+- **Live after adoption** (hooks and sandbox in a real project session): the plugin's hooks and the template's sandbox settings. They are not active in this repository's own sessions.
+- **On the Owner's machine:** `strictAllowlist` and `core.hooksPath`.
+
+This repository contains no secrets. Once published, changes go through pull requests, which the Owner pushes and merges, and its CI runs the tests, lints the workflows, checks action pinning, scans for secrets, and validates the plugin (`docs/ADOPTING.md`, "This repository").
+
+## Reading order
+
+[`STANDARD.md`](STANDARD.md) for what must be true, [`DECISIONS.md`](DECISIONS.md) for why, [`docs/ADOPTING.md`](docs/ADOPTING.md) for how.
+
+## What this adds
+
+Other projects cover the process of specifying and planning work with agents. This repository adds what they do not: **walls**, each rule naming what holds it against a determined agent and what only guards it; **role separation**, with Planner, Builder, and Critic never the same session; **evidence**, raw command output saved to disk and reviewed in place; **findings with IDs** and a ruling on each; **hand-off**, one state file updated at the end of every session; **stack rules** for a Supabase, Next.js, and pnpm project (row-level security, append-only migrations, tests); **supply-chain settings** (lockfile installs, release-age delay, install-script allowlist, pinned actions); and **environment findings**, what Claude Code's sandbox, permissions, and hooks were observed to do, recorded as evidence.
+
+## Known gaps nobody covers, including us
+
+A rollback procedure, performance budgets, and a diff-size limit.
+
+## Prior art
+
+- [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT): four of its skills are allowed in a project at the pinned `0.6.12` (`templates/docs/SKILLS.md`); nothing is installed from it by default.
+- [github/spec-kit](https://github.com/github/spec-kit) (MIT): evaluated at `v1.1.3`, not used (DECISIONS 16).
+
+This repository is MIT-licensed (`LICENSE`), Copyright (c) 2026 Dean Hebert.
 
 ## Adopt it in a project
 
@@ -30,6 +58,7 @@ STANDARD.md       rules and how each is enforced
 DECISIONS.md      decisions about the standard itself
 CHANGELOG.md      what changed in each version
 VERSION           current version
+LICENSE           MIT
 docs/ADOPTING.md  how a project adopts the standard
 templates/        files a project copies once
 plugin/           the eng-standard Claude Code plugin (hooks, agents, skills, tests)

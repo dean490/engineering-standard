@@ -42,7 +42,7 @@ Instructions for every coding agent in this repository. This project follows the
 - Critic passes and rulings: `docs/reviews/`. History: `docs/archive/` (don't load it unless asked).
 - Path-scoped rules for migrations, row-level security, and tests: `.claude/rules/`.
 - Evidence: `.recon/<step>/`, raw command output with exit codes (gitignored, reviewed in place).
-- Agent skills policy: <`docs/SKILLS.md`, if the project has one>. Never run `npx skills`, and never install, update, or remove a skill unless the Planner gives the exact command.
+- Agent skills policy and allow-list: `docs/SKILLS.md`. Never run `npx skills`, and never install, update, or remove a skill unless the Planner gives the exact command.
 
 ## Workflow
 

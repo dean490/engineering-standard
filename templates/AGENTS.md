@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Instructions for every coding agent in this repository. This project follows the engineering standard <version, e.g. v0.1.0> (<link to the engineering-standard repository>). Keep this file under 200 lines and import nothing large into it (STANDARD 8.1).
+Instructions for every coding agent in this repository. This project follows the engineering standard <version, e.g. v0.1.1> (<link to the engineering-standard repository>). Keep this file under 200 lines and import nothing large into it (STANDARD 8.1).
 
 ## Project
 

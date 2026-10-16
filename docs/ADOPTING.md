@@ -157,6 +157,16 @@ For offline use, or to keep a pinned copy inside the project instead of fetching
 
 A relative `directory` path resolves against the repository's main checkout. Update the copy only by replacing it with a tagged release and reviewing the diff. For a one-off session, `claude --plugin-dir vendor/engineering-standard/plugin` loads the plugin without any marketplace.
 
+## Install the interview skills (Owner)
+
+STANDARD 1.8 needs `/grill-me` and `grilling` in the project, and neither ships with the plugin. In a terminal outside an agent session (a Builder cannot write `.claude/skills/`, and DECISIONS 17 applies):
+
+1. Clone `https://github.com/mattpocock/skills` and check out the commit pinned in `docs/SKILLS.md`.
+2. Copy `skills/productivity/grill-me/SKILL.md` and `skills/productivity/grilling/SKILL.md` to `.claude/skills/grill-me/SKILL.md` and `.claude/skills/grilling/SKILL.md`, and the source `LICENSE` to each folder. Do not copy the `agents/` folders.
+3. Read both files in full and review them as a diff against what the pin says (SKILLS policy 3). They are 157 B and 2,049 B at the pin.
+4. Add a row for each to the register in `docs/SKILLS.md`, then commit the files by name.
+5. Check: `/grill-me` appears in the skill list in a new session.
+
 ## Workflow files the Owner writes
 
 - **`.recon/current-brief-paths.txt`**: when a brief allows the Builder to edit a protected path with Claude's file tools (a shipped migration, the lockfile, a `scripts/check-*` file, or `.claude/settings.json`), the Owner lists those repository-relative paths here, one per line, before handing the brief to the Builder, and clears the file after the step. The deny rule `Edit(.recon/current-brief-paths.txt)` and the protect-paths hook stop a session from writing it, so write it in an editor or shell outside Claude Code. The list lifts only the hook; the CI checks still apply, so a change to a shipped migration fails **Migrations are append-only** and the others fail **Sensitive change** until the Owner merges them deliberately. Files under `.github/` and `.githooks/`, `.gitleaks.toml`, and `.gitleaksignore` can't be listed: the `Edit` deny rules and the sandbox block them for every session, so the Owner edits them outside Claude Code.

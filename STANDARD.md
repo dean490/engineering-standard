@@ -23,7 +23,7 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 
 1.2 **Planner runs in plan mode and cannot edit the repository.** [guarded: plan mode, and the Planner guard on Claude's file tools and shell commands; walls: the Owner's review at merge and the protected `main` (9.1)] It reads the repo directly, reviews raw artifacts, and gives the Owner the exact next Builder prompt.
 
-1.3 **Builder implements one step per session**, against a written step brief that states scope, files in scope, out-of-scope items, and the acceptance checks. [checked] When the brief does not cover something, the Builder stops and reports. [practice]
+1.3 **Builder implements one step per session**, against a written step brief that states scope, files in scope, out-of-scope items, and the acceptance checks, and also carries the *Grilled* line and assumptions (1.8), the briefs that block it (1.9), and the test seams (2.6). [checked] When the brief does not cover something, the Builder stops and reports; it does not decide it (1.8). [practice]
 
 1.4 **Critic runs in two forms.**
 - *Per-step review:* a read-only Critic subagent reviews each step's diff against the brief and spec before the Owner approves the commit. It reports gaps that affect correctness or stated requirements, not style. [checked]
@@ -34,6 +34,10 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 1.6 **Owner approves**: every push to `main`, every deploy, every production data or schema change, every credential, every purchase, every publication. The Owner pushes, opens pull requests, and merges; agents commit only with the Owner's approval and never push. [enforced for pushes to `main` and deploys: agent sessions have no route to GitHub (the sandbox's network allowlist, 3.3), and the ruleset on `main` takes changes only through a pull request with the required checks (9.1); checked, by the Owner at adoption and at each phase gate, for production data, schema, and credentials: no production credentials on development machines (3.8); guarded: deny rules and the commit-hygiene hook, which block every `git push`; no standing approvals (3.4)]
 
 1.7 **Model provenance.** Commit trailers and records name the model that actually did the work, or are omitted. Never a default. [practice]
+
+1.8 **Open decisions are settled before a brief is written.** Before the Planner writes a step brief for new work, or a spec section is marked agreed, the Planner and the Owner run the `/grill-me` skill (`templates/docs/SKILLS.md`) on it, until no decision is left silently assumed. The brief carries a *Grilled* line (the date and where the questions and answers are kept) and lists each decision the Owner delegated ("whatever you think") as an assumption the Planner made, so the Critic and the Owner can see it. A decision that is expensive to reverse goes in `docs/DECISIONS.md` (constitution I). Exempt: a change that leaves nothing open (a rename, a typo, a dependency bump). Running the interview is [practice]; the record is [checked: the Critic at the per-step review (1.4), the Owner at each phase gate]. When a brief is found to have skipped it twice, this rule is promoted to a check (constitution IV).
+
+1.9 **Steps are vertical slices.** A step cuts a narrow but complete path through every layer it touches (schema, API, UI, tests) and can be demonstrated or verified on its own, so it can be reviewed and reverted alone. A brief names the briefs that must finish before it can start. Any prefactoring goes in an earlier step. A wide mechanical change (renaming a column, retyping a shared symbol), where one edit breaks many call sites and no slice can stay green, is sequenced as expand (add the new form beside the old), migrate (move callers over in batches, one brief per batch), and contract (delete the old form once no caller remains). When a slice will not fit a session (10.1), cut it into smaller slices that each still run end to end, never into layers; where it cannot be cut, the Planner records the overrun in the brief and the Owner approves the brief with it. After `to-tickets` in `mattpocock/skills` (DECISIONS 19). [checked: the Planner when writing a brief (10.1), the Critic at the per-step review]
 
 ## 2. Verification gates
 
@@ -46,6 +50,10 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 2.4 **Tests.** Core logic, rules, and anything with money, safety, or permissions has unit tests. Anything that changes permanent state has integration tests against a real local database. Tests are never deleted or loosened to make a change pass. [enforced: CI check Test integrity, run from the base branch, fails a pull request that deletes a test file or adds a skipped, focused, postponed, or inverted test, and Sensitive change fails one that changes the test-runner, TypeScript, or lint configuration; the Owner may override with an admin merge, recorded in the pull request; checked]
 
 2.5 **Test-count delta** is reported at the end of every Builder session. [practice]
+
+2.6 **Test seams are agreed in the brief.** A seam is the public interface where behavior is observed without reaching inside. The brief names the seams its tests sit at, each with a line on what the seam catches and what it misses, and the Owner approves them with the brief. Tests sit at those seams, not against internals. A test the Builder finds it needs at another seam is reported to the Planner, not added silently. Prefer an existing seam to a new one, and the highest seam that reaches the behavior; core logic that 2.4 requires unit tests for keeps its own unit as a seam. After `tdd` and `to-spec` in `mattpocock/skills` (DECISIONS 19). [checked: the Critic at the per-step review]
+
+2.7 **A test must be able to fail.** Expected values come from a source independent of the code under test: a literal, a worked example, or the spec. A test that recomputes the expected value the way the code does passes by construction and is a finding, as is a test that mocks an internal collaborator of the module it tests or that checks state through a side channel (querying the database instead of the interface). Not a finding: an integration test required by 2.4 that reads the database to confirm a change to permanent state, because that read is the check. The CI check in 2.4 sees deleted, skipped, and inverted tests, not these. After `tdd` in `mattpocock/skills` (DECISIONS 19). [checked: the Critic]
 
 ## 3. Agent guardrails (Claude Code configuration)
 
@@ -122,7 +130,8 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 8.2 **One state file.** `docs/PROGRESS.md` holds current state: phase, last step, what is deployed where, next step, open items. Other documents link to it instead of restating state. Updated by the `/eng-standard:handoff` skill at the end of every session, and kept under about 60 lines: history moves to `docs/archive/` (8.3). [practice, made routine by the skill]
 
 8.3 **Standard document set:**
-- `docs/SPEC.md`: what is being built (split by area when it grows past one reading).
+- `docs/SPEC.md`: what is being built, and what each section leaves out (split by area when it grows past one reading).
+- `docs/GLOSSARY.md`: the project's own terms, one tight definition each, with the words to avoid (8.5).
 - `docs/DECISIONS.md`: decisions with date, rationale, and rejected alternatives.
 - `docs/DEVIATIONS.md`: intentional differences from the spec.
 - `docs/PROGRESS.md`: current state (8.2).
@@ -133,6 +142,8 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 
 8.4 **Supersession is explicit.** A changed section says what replaced it; the spec keeps a short index of which section governs each feature. [checked]
 
+8.5 **One word per concept.** When the interview (1.8) settles a term, it goes in `docs/GLOSSARY.md` straight away: the Planner records it in the brief, and the Builder writes it in that step, or the Owner does between steps, because the Planner cannot edit the repository (1.2). An entry is a definition of what the thing is in one or two sentences, and the words to avoid for it. Only terms specific to the project belong there, not general programming concepts, and nothing about implementation. Specs, briefs, tests, and code use its words. The file is read on demand, never imported into `AGENTS.md` (8.1). After `domain-modeling` in `mattpocock/skills` (DECISIONS 19). [checked: the Critic, who reports a brief or spec that uses an avoided word]
+
 ## 9. Repository and CI
 
 9.1 **`main` is protected:** pull requests only, required CI checks, no force-push, no deletion. Nobody pushes to `main` directly, the Owner included: the Owner's bypass works only through a pull request. [enforced: a ruleset on `main`]
@@ -140,6 +151,8 @@ Exact configuration lives in `templates/` and `plugin/`. This file says what mus
 9.2 **CI runs the full gate** (2.1), the migration replay (6.3), the row-level security check and isolation tests (4.1), the client bundle backstop (4.2), and the dependency audit on the pull request's code. On pull requests, the guard checks run from the base branch, so a pull request can't change or skip them: secret scanning (4.6), action pinning (5.4), the append-only migration check (6.2), Release age (5.2), Test integrity (2.4), and Sensitive change (3.4, 3.5). On a push to `main`, secret scanning, action pinning, and the migration check run again on what was pushed. [enforced]
 
 9.3 **Commits** are staged by name, messages written to a file and committed with `-F`, subjects of 72 characters or less. [guarded: the commit-hygiene hook for bulk staging and `-m`, whose block message states the 72-character subject limit but does not measure it; walls: the Owner's review at merge and the protected `main` (9.1); practice for the subject length and the trailers]
+
+9.4 **Pull requests say how reversible they are.** Each pull request states whether merging is a one-way door (destructive or hard to undo: dropped data, a shipped migration, a changed public contract) or a two-way door (cheap to revert), and its blast radius in one word with the ramifications that matter. The Planner writes it from the brief; the Owner reads it before merging. After `pr` in `mattpocock/skills` (DECISIONS 19). [checked: the Owner, at merge]
 
 ## 10. Context and cost
 

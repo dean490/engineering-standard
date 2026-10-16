@@ -79,7 +79,7 @@ That copies the CI workflows, Dependabot, the pull request template, the pre-com
 | `scripts/check-*.mjs` | The checks the workflows run (copied from `templates/scripts/`); protected paths | Nothing |
 | `.github/dependabot.yml` | Weekly npm and GitHub Actions updates with a 7-day cooldown | Nothing |
 | `.github/pull_request_template.md` | Pull request sections the standard asks for | Nothing |
-| `docs/SPEC.md`, `DECISIONS.md`, `DEVIATIONS.md`, `PROGRESS.md`, `OPERATIONS.md`, `SKILLS.md`, `reviews/README.md`, `archive/README.md` | The standard document set (STANDARD 8.3) | Fill in as the project goes |
+| `docs/SPEC.md`, `GLOSSARY.md`, `DECISIONS.md`, `DEVIATIONS.md`, `PROGRESS.md`, `OPERATIONS.md`, `SKILLS.md`, `reviews/README.md`, `archive/README.md` | The standard document set (STANDARD 8.3) | Fill in as the project goes |
 | `.gitignore` | Ignores `.env*` (except `.env.example`), `.recon/`, build output, and personal Claude files | Add project-specific entries |
 
 Agents cannot reliably edit permission files inside `templates/`: the Owner applies such edits, and the Builder stops and reports when refused (DECISIONS 17).
@@ -156,6 +156,16 @@ For offline use, or to keep a pinned copy inside the project instead of fetching
 ```
 
 A relative `directory` path resolves against the repository's main checkout. Update the copy only by replacing it with a tagged release and reviewing the diff. For a one-off session, `claude --plugin-dir vendor/engineering-standard/plugin` loads the plugin without any marketplace.
+
+## Install the interview skills (Owner)
+
+STANDARD 1.8 needs `/grill-me` and `grilling` in the project, and neither ships with the plugin. In a terminal outside an agent session (a Builder cannot write `.claude/skills/`, and DECISIONS 17 applies):
+
+1. Clone `https://github.com/mattpocock/skills` and check out the commit pinned in `docs/SKILLS.md`.
+2. Copy `skills/productivity/grill-me/SKILL.md` and `skills/productivity/grilling/SKILL.md` to `.claude/skills/grill-me/SKILL.md` and `.claude/skills/grilling/SKILL.md`, and the source `LICENSE` to each folder. Do not copy the `agents/` folders.
+3. Read both files in full and review them as a diff against what the pin says (SKILLS policy 3). They are 157 B and 2,049 B at the pin.
+4. Add a row for each to the register in `docs/SKILLS.md`, then commit the files by name.
+5. Check: `/grill-me` appears in the skill list in a new session.
 
 ## Workflow files the Owner writes
 

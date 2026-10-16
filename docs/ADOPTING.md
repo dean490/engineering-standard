@@ -10,7 +10,7 @@ The standard tags each rule by what holds it (`STANDARD.md`, introduction). A **
 
 ## What you need
 
-- **Claude Code 2.1.285 or later**, on macOS, Linux, or WSL2, in the CLI or the desktop app's Code tab, in **local sessions**. v0.1.0 doesn't support cloud sessions: they don't install the plugins a repository declares, and they reach GitHub with the Owner's authorization through Anthropic's proxy, so neither the guardrails nor the network wall holds there. The template turns on the sandbox with `failIfUnavailable`, so Claude Code refuses to start where the sandbox can't run, including native Windows. On Linux and WSL2, install `bubblewrap` and `socat` first.
+- **Claude Code 2.1.285 or later**, on macOS, Linux, or WSL2, in the CLI or the desktop app's Code tab, in **local sessions**. v0.1.1 doesn't support cloud sessions: they don't install the plugins a repository declares, and they reach GitHub with the Owner's authorization through Anthropic's proxy, so neither the guardrails nor the network wall holds there. The template turns on the sandbox with `failIfUnavailable`, so Claude Code refuses to start where the sandbox can't run, including native Windows. On Linux and WSL2, install `bubblewrap` and `socat` first.
 - **Node** on `PATH`. The plugin's hooks run `node`.
 - **git**, and **pnpm 10.26.0 or later**. The template pins the 10.x line; see [pnpm version](#pnpm-version).
 - **The Supabase CLI**, installed outside the project, never as a project dependency: on macOS, `brew install supabase/tap/supabase` (Apple Silicon puts it at `/opt/homebrew/bin/supabase`, the path the template names; Intel Macs at `/usr/local/bin/supabase`); on Linux and WSL2, a release binary from <https://github.com/supabase/cli/releases>, checked against that release's `checksums.txt`. Pick a release at least 7 days old where you can (STANDARD 5.2); CI pins 2.119.0. See [The Supabase CLI](#the-supabase-cli) for a machine where it lives at another path.
@@ -128,7 +128,7 @@ The template's `.claude/settings.json` registers this repository as a plugin mar
 ```json
 "extraKnownMarketplaces": {
   "engineering-standard": {
-    "source": { "source": "github", "repo": "dean490/engineering-standard", "ref": "v0.1.0" }
+    "source": { "source": "github", "repo": "dean490/engineering-standard", "ref": "v0.1.1" }
   }
 },
 "enabledPlugins": { "eng-standard@engineering-standard": true }
@@ -324,7 +324,7 @@ Do everything above, plus:
 
 The standard's own repository follows the same model, published as [dean490/engineering-standard](https://github.com/dean490/engineering-standard).
 
-**Status.** It is public. CI runs on pull requests and on `main`, the ruleset on `main` is set with the required checks below, and `v0.1.0` is the first release tag, the one the plugin pin names. No wall has yet run in an adopting project.
+**Status.** It is public. CI runs on pull requests and on `main`, the ruleset on `main` is set with the required checks below, and `v0.1.1` is the latest release tag, the one the plugin pin names (`v0.1.0` was the first). No wall has yet run in an adopting project.
 
 - **Live now:** the tests (`node --test plugin/tests/` and `node --test tests/`), CI, and the ruleset on `main`.
 - **Live after adoption** (hooks and sandbox in a real project session): the plugin's hooks and the template's sandbox settings. They are not active in this repository's own sessions, whose `.claude/settings.json` does not enable the plugin.

@@ -2,6 +2,13 @@
 
 All notable changes to the engineering standard. Versions follow `VERSION`; projects pin one and adopt new ones deliberately.
 
+## Unreleased
+
+- STANDARD 1.8: open decisions are settled with the `/grill-me` skill before a brief is written or a spec section is agreed; the brief records it (DECISIONS 18).
+- `templates/docs/SKILLS.md`: `grill-me` and `grilling` from `mattpocock/skills` added at commit `49dd158`; `interview-me` moved to Excluded.
+- `plugin/agents/critic.md`: the Critic checks the brief for the *Grilled* line and its assumptions list (STANDARD 1.8), and checks test seams, tests that cannot fail, vertical slices, and glossary words (STANDARD 1.9, 2.6, 2.7, 8.5).
+- Six practices from `mattpocock/skills` at `49dd158` (DECISIONS 19): STANDARD 1.9 vertical-slice steps, 2.6 test seams agreed in the brief, 2.7 a test must be able to fail, 8.5 one word per concept with the new `templates/docs/GLOSSARY.md`, 9.4 reversibility on every pull request; an **Out of scope** line in each `templates/docs/SPEC.md` section; a *Merge danger* section in the pull request template; `templates/AGENTS.md` and `docs/ADOPTING.md` list the glossary.
+
 ## 0.1.0 (unreleased)
 
 First version.

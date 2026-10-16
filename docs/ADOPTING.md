@@ -79,7 +79,7 @@ That copies the CI workflows, Dependabot, the pull request template, the pre-com
 | `scripts/check-*.mjs` | The checks the workflows run (copied from `templates/scripts/`); protected paths | Nothing |
 | `.github/dependabot.yml` | Weekly npm and GitHub Actions updates with a 7-day cooldown | Nothing |
 | `.github/pull_request_template.md` | Pull request sections the standard asks for | Nothing |
-| `docs/SPEC.md`, `DECISIONS.md`, `DEVIATIONS.md`, `PROGRESS.md`, `OPERATIONS.md`, `SKILLS.md`, `reviews/README.md`, `archive/README.md` | The standard document set (STANDARD 8.3) | Fill in as the project goes |
+| `docs/SPEC.md`, `GLOSSARY.md`, `DECISIONS.md`, `DEVIATIONS.md`, `PROGRESS.md`, `OPERATIONS.md`, `SKILLS.md`, `reviews/README.md`, `archive/README.md` | The standard document set (STANDARD 8.3) | Fill in as the project goes |
 | `.gitignore` | Ignores `.env*` (except `.env.example`), `.recon/`, build output, and personal Claude files | Add project-specific entries |
 
 Agents cannot reliably edit permission files inside `templates/`: the Owner applies such edits, and the Builder stops and reports when refused (DECISIONS 17).

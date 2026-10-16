@@ -37,6 +37,7 @@ Instructions for every coding agent in this repository. This project follows the
 
 - What we're building: `docs/SPEC.md`. Read the sections your brief names, not the whole file.
 - Current state: `docs/PROGRESS.md`, the only state file (STANDARD 8.2).
+- The project's terms, one word per concept: `docs/GLOSSARY.md`. Use its words; read it when naming things.
 - Decisions and rejected alternatives: `docs/DECISIONS.md`. Intentional differences from the spec: `docs/DEVIATIONS.md`.
 - Environments, backups, runbooks: `docs/OPERATIONS.md`.
 - Critic passes and rulings: `docs/reviews/`. History: `docs/archive/` (don't load it unless asked).

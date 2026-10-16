@@ -36,7 +36,8 @@ A rollback procedure, performance budgets, and a diff-size limit.
 
 ## Prior art
 
-- [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT): four of its skills are allowed in a project at the pinned `0.6.12` (`templates/docs/SKILLS.md`); nothing is installed from it by default.
+- [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) (MIT): three of its skills are allowed in a project at the pinned `0.6.12` (`templates/docs/SKILLS.md`); nothing is installed from it by default.
+- [mattpocock/skills](https://github.com/mattpocock/skills) (MIT): `grill-me` and `grilling` are allowed in a project at the pinned commit `49dd158` and required before a brief by STANDARD 1.8 (DECISIONS 18); six more of its practices are written into the standard in its own words (DECISIONS 19); nothing is installed from it by default.
 - [github/spec-kit](https://github.com/github/spec-kit) (MIT): evaluated at `v1.1.3`, not used (DECISIONS 16).
 
 This repository is MIT-licensed (`LICENSE`), Copyright (c) 2026 Dean Hebert.

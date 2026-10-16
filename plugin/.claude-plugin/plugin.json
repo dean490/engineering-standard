@@ -1,6 +1,6 @@
 {
   "name": "eng-standard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Enforcement layer of the engineering standard: secret guards, protected paths, commit hygiene, Planner and Critic read-only guards, a stop gate, the Critic and security-reviewer agents, and the gate, handoff, and critic-pass skills.",
   "author": {
     "name": "Dean Hebert"

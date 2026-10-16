@@ -1,6 +1,6 @@
 # Engineering standard
 
-How projects built with AI agents are run: what must be true, how each rule is carried out, and the code that enforces it. Version 0.1.0 (`VERSION`). foodplan is the first project on it.
+How projects built with AI agents are run: what must be true, how each rule is carried out, and the code that enforces it. Version 0.1.1 (`VERSION`). foodplan is the first project on it.
 
 ## Three layers
 

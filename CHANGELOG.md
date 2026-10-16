@@ -2,7 +2,9 @@
 
 All notable changes to the engineering standard. Versions follow `VERSION`; projects pin one and adopt new ones deliberately.
 
-## Unreleased
+## 0.1.1 (2026-10-16)
+
+Version bump of `VERSION`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, so a project pinned to a tag can adopt the changes below by moving its marketplace `ref` to `v0.1.1`. Only `plugin/agents/critic.md` changed inside the plugin.
 
 - STANDARD 1.8: open decisions are settled with the `/grill-me` skill before a brief is written or a spec section is agreed; the brief records it (DECISIONS 18).
 - `templates/docs/SKILLS.md`: `grill-me` and `grilling` from `mattpocock/skills` added at commit `49dd158`; `interview-me` moved to Excluded.

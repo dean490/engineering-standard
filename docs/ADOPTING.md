@@ -194,6 +194,7 @@ Without the GitHub CLI, open `https://github.com/<owner>/<repo>/compare/main...<
 ## Turning things off
 
 - **Stop gate**: add `"env": { "ENG_STANDARD_STOP_GATE": "off" }` to `.claude/settings.json` for the whole project, or to `.claude/settings.local.json` for one machine. A project with no `gate:fast` script has no stop gate either. The stop gate is a reminder, not a wall: CI's required **Gate** check is.
+- **Compact-stop**: add `"env": { "ENG_STANDARD_COMPACT_STOP": "off" }` to `.claude/settings.json` for the whole project, or to `.claude/settings.local.json` for one machine. With it on, a session that auto-compacts is told to hand off and end its turn (STANDARD 10.1): the plugin then denies every tool call except Read, Grep, Glob, SendMessage, `mcp__ccd_turn__*` tools, and writes to `.recon/<step>/INDEX.md` or under `~/.claude/plans/`, and lets the session stop without the stop gate's demand. A manual `/compact` does nothing. A guardrail, not a wall: the Owner can always end the session or turn the hook off.
 - Nothing else is meant to be turned off. A rule that gets in the way is a change to the standard: propose it in this repository (constitution, Amendments).
 
 ## Consequences to know about

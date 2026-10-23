@@ -17,6 +17,8 @@
 //     env block of .claude/settings.json or .claude/settings.local.json
 //   - skip if this stop is already a continuation caused by a stop hook
 //     (stop_hook_active), so the hook blocks a stop at most once
+//   - skip if the session auto-compacted (lib/compact-marks.cjs): compact-stop has
+//     told it to hand off and end its turn, so it stops without the gate demand
 //   - skip unless the session's role is "builder" (lib/roles.cjs): Planner
 //     sessions, sessions whose record can't be read, sessions with no record,
 //     and the review agents (agent_type) are never blocked
@@ -75,6 +77,9 @@ function main(raw) {
   if (!payload || typeof payload !== 'object') allowStop();
   if (payload.stop_hook_active === true) allowStop();
   if (typeof payload.agent_type === 'string' && REVIEW_AGENTS.has(payload.agent_type)) allowStop();
+
+  const marks = require('./lib/compact-marks.cjs');
+  if (marks.enabled() && marks.isMarked(payload.session_id)) allowStop();
 
   const roles = require('./lib/roles.cjs');
   const role = roles.readRole(payload.session_id);

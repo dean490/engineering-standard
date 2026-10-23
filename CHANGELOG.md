@@ -2,6 +2,15 @@
 
 All notable changes to the engineering standard. Versions follow `VERSION`; projects pin one and adopt new ones deliberately.
 
+## 0.1.2 (2026-10-22)
+
+Version bump of `VERSION`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, so a project pinned to a tag can adopt the change below by moving its marketplace `ref` to `v0.1.2`. A new hook in the plugin; nothing else in the plugin changed except the stop gate's exception for it.
+
+- `plugin/hooks/compact-stop.cjs` (STANDARD 10.1): a session stops at its first auto-compaction. `PreCompact` with `trigger: auto` marks the session (a manual `/compact` does not, and compaction itself is never blocked); `SessionStart` with source `compact` tells a marked session to write its INDEX, report to the Planner, and end its turn; `PreToolUse` then denies every tool call from a marked session except Read, Grep, Glob, SendMessage, `mcp__ccd_turn__*` tools, and Edit or Write on `.recon/<step>/INDEX.md` or under `~/.claude/plans/`. Marks live in `${CLAUDE_PLUGIN_DATA}/compacted/`. `ENG_STANDARD_COMPACT_STOP=off` turns it off, the way `ENG_STANDARD_STOP_GATE=off` does for the stop gate.
+- `plugin/hooks/stop-gate.cjs`: a marked session may stop without the fast-gate demand.
+- `plugin/hooks/lib/compact-marks.cjs` is new; `lib/roles.cjs` exports its file-name helper `safeName`.
+- `docs/ADOPTING.md` (Turning things off) and STANDARD 10.1 describe it.
+
 ## 0.1.1 (2026-10-16)
 
 Version bump of `VERSION`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, so a project pinned to a tag can adopt the changes below by moving its marketplace `ref` to `v0.1.1`. Only `plugin/agents/critic.md` changed inside the plugin.

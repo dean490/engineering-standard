@@ -1,5 +1,6 @@
 'use strict';
-// The session role store shared by the Planner guard and the stop gate.
+// The session role store shared by the Planner guard and the stop gate (and
+// the file-name helper that compact-marks.cjs uses for its own store).
 //
 // Roles live in ${CLAUDE_PLUGIN_DATA}/session-roles/<session_id>.json, written
 // once per session by planner-readonly.cjs --record-role. Sandboxed commands
@@ -26,11 +27,15 @@ function storeDir() {
   return path.join(dataDir(), 'session-roles');
 }
 
-function rolePath(sessionId) {
-  const safe = /^[A-Za-z0-9_-]{1,128}$/.test(sessionId)
+// A session ID as a file name: used as is when it is plain, hashed otherwise.
+function safeName(sessionId) {
+  return /^[A-Za-z0-9_-]{1,128}$/.test(sessionId)
     ? sessionId
     : crypto.createHash('sha256').update(sessionId).digest('hex');
-  return path.join(storeDir(), `${safe}.json`);
+}
+
+function rolePath(sessionId) {
+  return path.join(storeDir(), `${safeName(sessionId)}.json`);
 }
 
 // { role, record } for a readable record; { role: 'planner', unreadable: reason }
@@ -56,4 +61,4 @@ function readRole(sessionId) {
   return { role: record.role, record };
 }
 
-module.exports = { ROLES, dataDir, storeDir, rolePath, readRole };
+module.exports = { ROLES, dataDir, storeDir, safeName, rolePath, readRole };

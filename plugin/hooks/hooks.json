@@ -1,5 +1,5 @@
 {
-  "description": "eng-standard guardrails: secret guards, protected paths, commit hygiene, Planner and Critic read-only guards, and the stop gate",
+  "description": "eng-standard guardrails: secret guards, protected paths, commit hygiene, Planner and Critic read-only guards, the compact-stop guard, and the stop gate",
   "hooks": {
     "PreToolUse": [
       {
@@ -52,6 +52,17 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs"],
+            "timeout": 10
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -61,6 +72,30 @@
             "type": "command",
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/planner-readonly.cjs", "--record-role"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs"],
             "timeout": 10
           }
         ]

@@ -46,6 +46,7 @@ test('hooks.json: every hook runs for exactly the events and tools it guards', (
     'protect-paths.cjs': { PreToolUse: ['Edit', 'NotebookEdit', 'Write'] },
     'planner-readonly.cjs': { PreToolUse: ['Edit', 'NotebookEdit', 'Write', ...SHELL].sort() },
     'planner-readonly.cjs --record-role': { UserPromptSubmit: [...TOOLS].sort() },
+    'compact-stop.cjs': { PreToolUse: [...TOOLS].sort(), PreCompact: [...TOOLS].sort(), SessionStart: [...TOOLS].sort() },
     'commit-hygiene.cjs': { PreToolUse: [...SHELL].sort() },
     'critic-readonly.cjs': { PreToolUse: [...SHELL].sort() },
     'secret-redact.cjs': { PostToolUse: [...TOOLS].sort() },
@@ -64,6 +65,18 @@ test('hooks.json: every hook script is wired, and every wired script exists', ()
   const scripts = fs.readdirSync(HOOKS_DIR).filter((f) => f.endsWith('.cjs')).sort();
   const wired = [...new Set(Object.keys(wiring()).map((k) => k.split(' ')[0]))].sort();
   assert.deepEqual(wired, scripts);
+});
+
+test('hooks.json: compact-stop runs for every tool call, every PreCompact, and every SessionStart, and decides inside the script', () => {
+  // No matcher on PreCompact or SessionStart: the script checks trigger "auto" and source "compact" itself,
+  // so a change in the matcher values can't switch the guard off without a test failing.
+  for (const event of ['PreToolUse', 'PreCompact', 'SessionStart']) {
+    const entries = config[event].filter((e) => e.hooks.some((h) => h.args[0].endsWith('/compact-stop.cjs')));
+    assert.equal(entries.length, 1, event);
+    assert.ok(entries[0].matcher === undefined || entries[0].matcher === '*', `${event} matcher`);
+    assert.deepEqual(entries[0].hooks[0].args, ['${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs']);
+    assert.ok(entries[0].hooks[0].timeout <= 30);
+  }
 });
 
 test('hooks.json: the stop gate needs no long timeout, since it runs no project scripts', () => {

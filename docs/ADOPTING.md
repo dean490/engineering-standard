@@ -70,7 +70,7 @@ That copies the CI workflows, Dependabot, the pull request template, the pre-com
 | `AGENTS.md` | Instructions for every agent; stays under 200 lines | Replace every `<…>` placeholder |
 | `CLAUDE.md` | Imports `AGENTS.md` and adds Claude Code notes | Nothing |
 | `.claude/settings.json` | Deny, ask, and allow rules; sandbox; plugin marketplace | Pin `ref` to the standard's version tag |
-| `.githooks/pre-commit` | Scans the staged changes for secrets with gitleaks before every commit | Nothing; keep it executable (`chmod +x`) |
+| `.githooks/pre-commit`, `.githooks/gitleaks-builtin.toml` | Scans the staged changes for secrets with gitleaks before every commit; the `.toml` file selects gitleaks's built-in rules and must sit next to the hook | Nothing; keep `pre-commit` executable (`chmod +x`) |
 | `.claude/rules/migrations.md`, `rls.md`, `tests.md` | Path-scoped rules that load when Claude touches matching files | Adjust `paths` if the layout differs |
 | `pnpm-workspace.yaml` | Release-age delay, install-script allowlist, trust policy | Add `allowBuilds` entries as installs ask for them |
 | `tsconfig.base.json` | Strict TypeScript options | Have the project's `tsconfig.json` extend it |

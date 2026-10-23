@@ -176,3 +176,21 @@ test('workflows: every third-party action is pinned to a full commit SHA', () =>
     for (const m of text.matchAll(/uses:\s*(\S+)/g)) assert.match(m[1], /^[^@]+@[0-9a-f]{40}$/, `${file}: ${m[1]}`);
   }
 });
+
+test('pre-commit: no temporary file; --config is the committed gitleaks-builtin.toml next to the hook', () => {
+  const hook = read('templates/.githooks/pre-commit');
+  assert.doesNotMatch(hook, /mktemp/);
+  assert.match(hook, /^config="\$\(dirname "\$0"\)\/gitleaks-builtin\.toml"$/m);
+  // Fails closed when the file is missing or holds anything but the two lines.
+  assert.match(hook, /^if \[ "\$\(grep -v .* "\$config" 2>\/dev\/null\)" != "\$\(printf '\[extend\]\\nuseDefault = true'\)" \]; then\n.*\n {2}exit 1\nfi$/m);
+  assert.match(hook, /^gitleaks git --pre-commit --staged --redact --verbose --no-banner --no-color --config "\$config"$/m);
+});
+
+test('gitleaks-builtin.toml: only [extend] and useDefault = true, besides comments', () => {
+  const lines = read('templates/.githooks/gitleaks-builtin.toml').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  assert.deepEqual(lines, ['[extend]', 'useDefault = true']);
+});
+
+test('pre-commit: the hook is executable', () => {
+  assert.ok(fs.statSync(path.join(ROOT, 'templates/.githooks/pre-commit')).mode & 0o111);
+});

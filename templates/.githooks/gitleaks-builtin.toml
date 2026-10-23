@@ -1,0 +1,3 @@
+# gitleaks's built-in rules and nothing else; .githooks/pre-commit passes this file with --config.
+[extend]
+useDefault = true

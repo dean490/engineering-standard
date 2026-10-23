@@ -2,6 +2,12 @@
 
 All notable changes to the engineering standard. Versions follow `VERSION`; projects pin one and adopt new ones deliberately.
 
+## 0.1.4 (2026-10-23)
+
+Version bump of `VERSION`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, so a project pinned to a tag can adopt the change below by moving its marketplace `ref` to `v0.1.4`. One bug fix in the template pre-commit hook; nothing in the plugin changes.
+
+- Bug fix, `templates/.githooks/pre-commit` (STANDARD 4.6): the hook wrote gitleaks's config to a file from `mktemp`, which on macOS lives in the system temp folder under `/var/folders/`. The Claude Code sandbox blocks writes there, so every Builder commit stopped with "Operation not permitted" before gitleaks ran. The config now comes from the new committed file `templates/.githooks/gitleaks-builtin.toml` (`[extend]` / `useDefault = true`), found next to the hook. If that file is missing or holds anything besides those two lines (comments and blank lines aside), the hook fails closed, because gitleaks 8.30.1 given an empty config scans with no rules and passes. The gitleaks command and its flags are unchanged. A project copies both files into `.githooks/` (`docs/ADOPTING.md`).
+
 ## 0.1.3 (2026-10-23)
 
 Version bump of `VERSION`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, so a project pinned to a tag can adopt the changes below by moving its marketplace `ref` to `v0.1.3`. Hand-off fixes found in the v0.1.2 live check; one bug fix, a card fallback, and the compaction window.

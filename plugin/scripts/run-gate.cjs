@@ -9,7 +9,7 @@
 // uncommitted non-doc changes, taken before the gate starts, so it names the
 // tree the gate ran on (lib/tree-hash.cjs). Prints the evidence path and the
 // exit code, never the gate's output. The evidence file starts with one result
-// line (STANDARD 10.3) and holds the raw output in full. Exits with the gate's
+// line (STANDARD 2.2) and holds the raw output in full. Exits with the gate's
 // exit code (2 when it can't be started).
 //
 // Claude runs this through the /eng-standard:gate skill with Bash, so it and
@@ -84,7 +84,7 @@ const child = spawn(pm, ['run', script], {
   stdio: ['ignore', fd, fd],
   shell: process.platform === 'win32',
 });
-// STANDARD 10.3: the evidence file starts with one result line, so a reviewer can check it with head.
+// STANDARD 2.2: the evidence file starts with one result line, so a reviewer can check it with head.
 function stamp(exit) {
   fs.writeFileSync(file, `# result: ${script} exit=${exit}\n${fs.readFileSync(file, 'utf8')}`);
 }

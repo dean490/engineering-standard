@@ -48,6 +48,14 @@
 //     push, link, functions deploy|delete, secrets set|unset, config push,
 //     branches create|delete, projects create|delete; gen types --project-id
 //
+// Commit gate (STANDARD 1.6; constitution IV): a git commit that passes the
+// checks above is also denied in a non-Planner session unless the
+// .recon/<step>/INDEX.md that changed most recently under the project has a
+// "## Needs a ruling" section that is empty or says "none", and a line
+// "result: gate:fast exit=0" (the first line /eng-standard:gate fast writes to
+// its evidence file). A project with no INDEX passes. Owner override:
+// ENG_STANDARD_COMMIT_GATE=off.
+//
 // Exit 2 = deny (reason on stderr). Exit 0 = no decision.
 // Fails closed: unparseable input is denied, and so is a command the parser
 // can't read when it mentions git, vercel, supabase, curl, or wget.
@@ -68,6 +76,9 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { longMatches, walkOptions } = options;
+
+// The payload being decided, for the commit gate (session and project).
+let currentPayload = null;
 
 const TAG = '(guard: eng-standard commit-hygiene)';
 const STAGE_BY_NAME = 'Stage each file by name (git add path/to/file ...), STANDARD 9.3.';
@@ -226,6 +237,75 @@ const COMMIT_SPEC = {
   longWithValue: ['--message', '--file', '--reuse-message', '--reedit-message', '--fixup', '--squash', '--template', '--author', '--date', '--cleanup', '--trailer', '--pathspec-from-file'],
 };
 
+const GATE_OFF = new Set(['off', '0', 'false', 'no', 'disabled']);
+const GATE_OVERRIDE = 'Owner override: `ENG_STANDARD_COMMIT_GATE=off`.';
+
+// The most recently changed .recon/<step>/INDEX.md under the project, or null.
+function latestIndex(root) {
+  let best = null;
+  let steps;
+  try {
+    steps = fs.readdirSync(path.join(root, '.recon'), { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  for (const d of steps) {
+    if (!d.isDirectory()) continue;
+    const file = path.join(root, '.recon', d.name, 'INDEX.md');
+    try {
+      const t = fs.statSync(file).mtimeMs;
+      if (best === null || t > best.t) best = { file, t, step: d.name };
+    } catch {
+      // no INDEX in this step
+    }
+  }
+  return best;
+}
+
+// The text of the "## Needs a ruling" section, or null when there is none.
+function rulingSection(text) {
+  const m = /^##[ \t]+Needs a ruling[ \t]*$/im.exec(text);
+  if (!m) return null;
+  const rest = text.slice(m.index + m[0].length);
+  const next = /^##[ \t]/m.exec(rest);
+  return next ? rest.slice(0, next.index) : rest;
+}
+
+// STANDARD 1.6: an agent commits once the gate, the reviews and the rulings
+// are clear. Returns a denial, or null to pass.
+function commitGate(payload) {
+  if (!payload || GATE_OFF.has(String(process.env.ENG_STANDARD_COMMIT_GATE || '').toLowerCase())) return null;
+  const role = require('./lib/roles.cjs').readRole(payload.session_id);
+  if (role !== null && role.role === 'planner') return null;
+  const index = latestIndex(common.projectDir(payload));
+  if (index === null) return null;
+  const rel = path.join('.recon', index.step, 'INDEX.md');
+  let text;
+  try {
+    text = fs.readFileSync(index.file, 'utf8');
+  } catch (e) {
+    return `Blocked: git commit. The commit gate could not read ${rel} (${e.message}). ${GATE_OVERRIDE} ${TAG}`;
+  }
+  const lacks = [];
+  const section = rulingSection(text);
+  if (section === null) {
+    lacks.push('a "## Needs a ruling" section (write "none" under it when nothing is open)');
+  } else {
+    const body = section.replace(/<!--[\s\S]*?-->/g, '').trim().replace(/^[>*-]+\s*/, '').replace(/\.$/, '');
+    if (body !== '' && !/^none$/i.test(body)) {
+      lacks.push('an empty "## Needs a ruling" section: a ruling is open, so tell the Owner "Rule on brief <N>" and stop, then continue from the Rulings section of the brief');
+    }
+  }
+  if (!/\bresult:[ \t]*gate:fast[ \t]+exit=0(?!\d)/i.test(text)) {
+    lacks.push('a fast-gate result line recording exit 0 ("result: gate:fast exit=0", the first line of .recon/gate/gate-fast.txt): run /eng-standard:gate fast, fix what fails, and copy the line under Checks');
+  }
+  if (lacks.length === 0) return null;
+  return (
+    `Blocked: git commit. The commit gate (STANDARD 1.6) found ${rel} lacking:\n- ${lacks.join('\n- ')}\n` +
+    `Commit once the gate, the reviews and the rulings are clear. ${GATE_OVERRIDE} ${TAG}`
+  );
+}
+
 function checkGit(argv, ctx) {
   const g = parseGit(argv);
   for (const c of g.configs) {
@@ -312,7 +392,7 @@ function checkGit(argv, ctx) {
       const why = pathspecProblem(p, pctx);
       if (why) return `Blocked: "git commit ${p}" commits every change under it in bulk (${why}). ${STAGE_BY_NAME} Then commit with -F. ${TAG}`;
     }
-    return null;
+    return commitGate(currentPayload);
   }
 
   if (sub === 'commit-tree') {
@@ -732,6 +812,7 @@ common.readStdin((err, raw) => {
     common.block(`Blocked: could not parse hook input (${e.message}); blocking (fail closed). ${TAG}`);
   }
   let reason;
+  currentPayload = payload;
   try {
     reason = decide(payload);
   } catch (e) {

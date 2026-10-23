@@ -47,17 +47,17 @@ Instructions for every coding agent in this repository. This project follows the
 
 ## Workflow
 
-Roles, gates, and evidence rules are in the engineering standard (STANDARD §1, §2). Each role runs in its own session.
+Roles, gates, and evidence rules are in the engineering standard (STANDARD §1, §2). Each role runs in its own session, and the Owner starts every session.
 
-- **Owner** (a human) approves anything irreversible or outward-facing: pushes to `main`, deploys, production data or schema, credentials, spending, publishing. The Owner pushes, opens pull requests, and merges; agent sessions have no route to GitHub.
-- **Planner** works in plan mode, reads the repo and the evidence, rules on Critic findings, and writes the step brief and the exact Builder prompt, and, once a step is committed, the Owner's commands to push the branch and open the pull request. It never edits the repository.
-- **Builder** implements one step per session, exactly as the brief says. When the brief doesn't cover something, stop and report; don't improvise. Check facts about tools and versions against current docs, not memory. Save raw evidence under `.recon/<step>/`, report the test-count delta, and stop for review. Stage files by name; commit only when the Owner approves, with the message written to a file (`git commit -F`). Never push: the Owner pushes the branch and opens the pull request with the commands the Planner gives.
-- **Critic** reviews cold and only reports: per step with `/eng-standard:critic-pass <step>`, and at each phase gate in a separate session.
+- **Owner** (a human) starts every session, approves briefs, and approves anything irreversible or outward-facing: pushes to `main`, deploys, production data or schema, credentials, spending, publishing. The Owner pushes, opens pull requests, and merges; agent sessions have no route to GitHub.
+- **Planner** works in plan mode and never edits the repository. It writes one brief at a time (`docs/BRIEF-TEMPLATE.md`), writes rulings in the brief file's "Rulings" section when the Owner says "Rule on brief <N>", and reads only the files a Builder leaves. It never starts, messages, or supervises a Builder.
+- **Builder** implements one brief per session, one layer, exactly as the brief says. Check facts about tools and versions against current docs, not memory. Save raw evidence under `.recon/<step>/` and keep `.recon/<step>/INDEX.md` current (`docs/INDEX-TEMPLATE.md`). At the end, run the Critic and security-reviewer agents in parallel and **fix every finding that fits the brief, at any severity**, logging each. Stop only for a change to the spec or a decision, weaker security, or an irreversible action: list it under "Needs a ruling" in INDEX.md, tell the Owner "Rule on brief <N>", and wait. When the fast gate has passed (its result line is in INDEX.md), the reviews are in, and "Needs a ruling" is empty, stage files by name and commit with `git commit -F`. Never push. End with the brief's Owner steps, with the exact commands and links filled in.
+- **Critic** reviews cold and only reports: per step with `/eng-standard:critic-pass <step>`, and at each phase gate in a separate session the Owner starts.
 - End every session with `/eng-standard:handoff`.
 
 ## Working efficiently
 
 Every turn re-sends the whole session (STANDARD §10):
-- Output that may pass about 100 lines goes to its evidence file; read the tail or grep it.
-- Grep before reading, and read large files by line range. Fetched docs live in `.recon/docs/`: reuse them.
-- When the brief's checks are done, stop and report.
+- At about 140k tokens, hand off: write your state file (the brief file or INDEX.md), start your successor with `start_session`, detach it, and stop. About 3 web lookups per session, then a background research subagent. Hooks enforce both.
+- Output that may pass about 100 lines goes to its evidence file; read the tail or grep it. Grep before reading, read large files by line range, and reuse fetched docs in `.recon/docs/`.
+- When the brief's checks are done, commit and report; don't wait to be asked.

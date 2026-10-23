@@ -46,6 +46,10 @@ test('hooks.json: every hook runs for exactly the events and tools it guards', (
     'protect-paths.cjs': { PreToolUse: ['Edit', 'NotebookEdit', 'Write'] },
     'planner-readonly.cjs': { PreToolUse: ['Edit', 'NotebookEdit', 'Write', ...SHELL].sort() },
     'planner-readonly.cjs --record-role': { UserPromptSubmit: [...TOOLS].sort() },
+    'compact-stop.cjs': { PreToolUse: [...TOOLS].sort(), PreCompact: [...TOOLS].sort(), SessionStart: [...TOOLS].sort() },
+    'token-watch.cjs': { PreToolUse: [...TOOLS].sort() },
+    'brief-check.cjs': { PreToolUse: ['Edit', 'Write'] },
+    'web-limit.cjs': { PreToolUse: ['WebFetch'] },
     'commit-hygiene.cjs': { PreToolUse: [...SHELL].sort() },
     'critic-readonly.cjs': { PreToolUse: [...SHELL].sort() },
     'secret-redact.cjs': { PostToolUse: [...TOOLS].sort() },
@@ -64,6 +68,29 @@ test('hooks.json: every hook script is wired, and every wired script exists', ()
   const scripts = fs.readdirSync(HOOKS_DIR).filter((f) => f.endsWith('.cjs')).sort();
   const wired = [...new Set(Object.keys(wiring()).map((k) => k.split(' ')[0]))].sort();
   assert.deepEqual(wired, scripts);
+});
+
+test('hooks.json: compact-stop runs for every tool call, every PreCompact, and every SessionStart, and decides inside the script', () => {
+  // No matcher on PreCompact or SessionStart: the script checks trigger "auto" and source "compact" itself,
+  // so a change in the matcher values can't switch the guard off without a test failing.
+  for (const event of ['PreToolUse', 'PreCompact', 'SessionStart']) {
+    const entries = config[event].filter((e) => e.hooks.some((h) => h.args[0].endsWith('/compact-stop.cjs')));
+    assert.equal(entries.length, 1, event);
+    assert.ok(entries[0].matcher === undefined || entries[0].matcher === '*', `${event} matcher`);
+    const hook = entries[0].hooks.find((h) => h.args[0].endsWith('/compact-stop.cjs'));
+    assert.deepEqual(hook.args, ['${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs']);
+    assert.ok(hook.timeout <= 30);
+  }
+});
+
+test('hooks.json: token-watch runs for every tool call with no matcher narrowing, and web-limit for WebFetch and WebSearch', () => {
+  const entries = config.PreToolUse.filter((e) => e.hooks.some((h) => h.args[0].endsWith('/token-watch.cjs')));
+  assert.equal(entries.length, 1);
+  assert.ok(entries[0].matcher === '*');
+  assert.ok(entries[0].hooks[0].timeout <= 30);
+  const web = config.PreToolUse.filter((e) => e.hooks.some((h) => h.args[0].endsWith('/web-limit.cjs')));
+  assert.equal(web.length, 1);
+  assert.ok(matches(web[0].matcher, 'WebFetch') && matches(web[0].matcher, 'WebSearch') && !matches(web[0].matcher, 'Read'));
 });
 
 test('hooks.json: the stop gate needs no long timeout, since it runs no project scripts', () => {

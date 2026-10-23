@@ -634,3 +634,93 @@ test('commit-hygiene CR-3: Monitor commands get the same checks as Bash', () => 
   const ws = runHook(HOOK, fixture('pretooluse-monitor', { tool_input: { command: undefined, ws: { url: 'wss://events.example.com/stream' } } }));
   assert.equal(ws.status, 0, `a WebSocket watch runs no command: ${ws.stderr}`);
 });
+
+// Commit gate (STANDARD 1.6): a commit needs a clear INDEX.
+const fs = require('fs');
+const path = require('path');
+const { tempDir } = require('./helpers.cjs');
+
+const FAST = '- result: gate:fast exit=0\n';
+const INDEX = (ruling, checks = FAST) => `# Step\n\n## Checks\n${checks}\n## Needs a ruling\n${ruling}\n\n## Test counts\n1\n`;
+
+function gateRepo(index, step = 'step-1') {
+  const root = tempDir('eng-standard-gate-');
+  if (index !== null) {
+    fs.mkdirSync(path.join(root, '.recon', step), { recursive: true });
+    fs.writeFileSync(path.join(root, '.recon', step, 'INDEX.md'), index);
+  }
+  return root;
+}
+
+function commit(root, env = {}, role = null) {
+  const data = tempDir('eng-standard-plugin-data-');
+  if (role) {
+    fs.mkdirSync(path.join(data, 'session-roles'), { recursive: true });
+    fs.writeFileSync(path.join(data, 'session-roles', 's1.json'), JSON.stringify({ role }));
+  }
+  return runHook(HOOK, fixture('pretooluse-bash', { cwd: root, session_id: 's1', tool_input: { command: 'git commit -F msg.txt' } }), {
+    env: { CLAUDE_PROJECT_DIR: root, CLAUDE_PLUGIN_DATA: data, ...env },
+  });
+}
+
+test('commit gate: a clear INDEX passes, with the ruling section empty or "none"', () => {
+  for (const ruling of ['none', 'None.', '- none', '', '<!-- nothing open -->']) {
+    const r = commit(gateRepo(INDEX(ruling)));
+    assert.equal(r.status, 0, `"${ruling}": ${r.stderr}`);
+  }
+});
+
+test('commit gate: an open ruling is denied, naming the section and what to do', () => {
+  const r = commit(gateRepo(INDEX('- Should the hook also cover Edit?')));
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /\.recon\/step-1\/INDEX\.md lacking/);
+  assert.match(r.stderr, /a ruling is open.*Rule on brief/);
+  assert.match(r.stderr, /Owner override: `ENG_STANDARD_COMMIT_GATE=off`/);
+  assert.match(r.stderr, new RegExp(TAG));
+});
+
+test('commit gate: a missing fast-gate line or ruling section is denied', () => {
+  let r = commit(gateRepo(INDEX('none', '- tests ran\n')));
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /fast-gate result line recording exit 0.*gate fast/s);
+  r = commit(gateRepo(INDEX('none', '- result: gate:fast exit=1\n')));
+  assert.equal(r.status, 2, 'exit=1 is not a pass');
+  r = commit(gateRepo(INDEX('none', '- result: gate:fast exit=0\n').replace('## Needs a ruling', '## Questions')));
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /"## Needs a ruling" section/);
+});
+
+test('commit gate: judges the INDEX that changed most recently', () => {
+  const root = gateRepo(INDEX('- open'), 'old');
+  const old = path.join(root, '.recon', 'old', 'INDEX.md');
+  fs.utimesSync(old, new Date(Date.now() - 60000), new Date(Date.now() - 60000));
+  fs.mkdirSync(path.join(root, '.recon', 'new'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.recon', 'new', 'INDEX.md'), INDEX('none'));
+  assert.equal(commit(root).status, 0);
+  const t = new Date(Date.now() + 60000);
+  fs.utimesSync(old, t, t);
+  assert.equal(commit(root).status, 2);
+});
+
+test('commit gate: Planner sessions, a project with no INDEX, and the override pass', () => {
+  const open = gateRepo(INDEX('- open'));
+  assert.equal(commit(open, {}, 'planner').status, 0);
+  assert.equal(commit(open, {}, 'builder').status, 2);
+  assert.equal(commit(gateRepo(null)).status, 0);
+  assert.equal(commit(open, { ENG_STANDARD_COMMIT_GATE: 'off' }).status, 0);
+});
+
+test('commit gate: leaves non-commit git commands and the other denials alone', () => {
+  const open = gateRepo(INDEX('- open'));
+  const run = (command) => runHook(HOOK, fixture('pretooluse-bash', { cwd: open, session_id: 's1', tool_input: { command } }), { env: { CLAUDE_PROJECT_DIR: open } });
+  assert.equal(run('git status').status, 0);
+  assert.equal(run('git add src/a.ts').status, 0);
+  assert.match(run('git commit -m x').stderr, /git commit -m/);
+});
+
+test('commit gate: the INDEX template as shipped does not pass the gate', () => {
+  const tpl = fs.readFileSync(path.join(__dirname, '..', '..', 'templates', 'docs', 'INDEX-TEMPLATE.md'), 'utf8');
+  const r = commit(gateRepo(tpl));
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /fast-gate result line/);
+});

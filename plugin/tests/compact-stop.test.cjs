@@ -7,7 +7,7 @@ const { fixture, runHook, tempRepo, tempDir, writeFiles } = require('./helpers.c
 
 const HOOK = 'compact-stop.cjs';
 const TAG = 'eng-standard compact-stop';
-const INSTRUCTION = /This session compacted, so it stops here \(eng-standard compact-stop\)\. 1\. Write where you stand into your state file: `\.recon\/<step>\/INDEX\.md` for a Builder, the brief file under `~\/\.claude\/plans\/` for a Planner\. 2\. Start your successor with `start_session`.*3\. Call `detach_session` with the new session's id\. 4\. End your turn with one line naming the successor\. Owner override: `ENG_STANDARD_COMPACT_STOP=off`\./;
+const INSTRUCTION = /This session compacted, so it stops here \(eng-standard compact-stop\)\. 1\. Write where you stand into your state file: `\.recon\/<step>\/INDEX\.md` for a Builder, the brief file under `~\/\.claude\/plans\/` for a Planner\. 2\. Call `start_session` directly.*3\. After a direct start, call `detach_session` with the new session's id\. 4\. After a direct start, end your turn with one line naming the successor\. Owner override: `ENG_STANDARD_COMPACT_STOP=off`\./;
 const SESSION = 's1';
 
 // A project, a plugin data directory, and a HOME whose ~/.claude/plans exists.
@@ -269,4 +269,32 @@ test('compact-stop: a token-watch mark does not make compact-stop deny anything'
   fs.mkdirSync(path.join(s.data, 'handoff'), { recursive: true });
   fs.writeFileSync(path.join(s.data, 'handoff', `${SESSION}.json`), '{}\n');
   assertPasses(call(s, 'Bash', { command: 'ls' }));
+});
+
+const SELECT_OK = [
+  'select:mcp__ccd_session__start_session,mcp__ccd_session_mgmt__detach_session',
+  'select:mcp__ccd_session__start_session, mcp__ccd_session_mgmt__detach_session ',
+  'select:mcp__ccd_turn__wrap_up',
+  'select:mcp__ccd_session__start_session',
+];
+const SELECT_DENIED = [
+  'start session', 'select:Bash', 'select:mcp__ccd_session__start_session,Bash', 'select:Bash,mcp__ccd_session__start_session',
+  'select:', 'select:,', '', '+ccd session', 'select:mcp__ccd_session__stop_session', 'select:mcp__ccd_turn__', ' select:mcp__ccd_turn__wrap_up',
+];
+
+test('compact-stop: ToolSearch passes only for a select: query naming the session tools or turn tools', () => {
+  const s = (() => { const x = setup(); mark(x); return x; })();
+  for (const q of SELECT_OK) assertPasses(call(s, 'ToolSearch', { query: q, max_results: 5 }));
+  for (const q of SELECT_DENIED) assertDenied(call(s, 'ToolSearch', { query: q, max_results: 5 }), 'ToolSearch');
+  for (const ti of [{}, { query: 5 }, { query: null }, { query: ['select:mcp__ccd_turn__wrap_up'] }]) assertDenied(call(s, 'ToolSearch', ti), 'ToolSearch');
+});
+
+test('compact-stop: the hand-off message names the direct start, the card fallback, and the card line', () => {
+  const s = (() => { const x = setup(); mark(x); return x; })();
+  const r = call(s, 'Bash', { command: 'ls' });
+  assert.match(r.stderr, /2\. Call `start_session` directly: initiation "user_asked", context "fresh", `background: true`/);
+  assert.match(r.stderr, /call `start_session` again with initiation "own_initiative", the same title, and the same prompt as a complete brief/);
+  assert.match(r.stderr, /"Tap Start on the card '<title>' to continue\."/);
+  assert.match(r.stderr, /`ToolSearch` query `select:mcp__ccd_session__start_session,mcp__ccd_session_mgmt__detach_session`/);
+  assert.match(r.stderr, /3\. After a direct start, call `detach_session`/);
 });

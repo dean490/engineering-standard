@@ -110,7 +110,7 @@ test('brief 07: file tools can\'t write .git/config, .git/config.worktree, or .g
 });
 
 test('brief 05 settings: compaction at 200k tokens and no claude.ai connectors fetched (STANDARD 10.2, 10.7)', () => {
-  assert.equal(settings.autoCompactWindow, 160000);
+  assert.equal(settings.autoCompactWindow, 200000);
   assert.equal(settings.disableClaudeAiConnectors, true);
 });
 

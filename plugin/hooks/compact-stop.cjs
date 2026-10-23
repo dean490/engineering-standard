@@ -20,8 +20,13 @@
 //   PreToolUse, every tool: when the session is marked, denies every call except
 //       Read, Grep, Glob; Edit and Write on .recon/*/INDEX.md under the project
 //       directory or on anything under ~/.claude/plans/; start_session and
-//       detach_session; and tools whose name starts with mcp__ccd_turn__ (the
-//       list is in lib/handoff.cjs, shared with token-watch.cjs). The reason is
+//       detach_session; ToolSearch with a `select:` query naming only those two
+//       tools or mcp__ccd_turn__ tools (so a session can load their schemas);
+//       and tools whose name starts with mcp__ccd_turn__ (the
+//       list is in lib/handoff.cjs, shared with token-watch.cjs). The hand-off
+//       message has the session call start_session directly and, when the app
+//       refuses a "user_asked" start because the turn came from another session,
+//       call it again with "own_initiative" to leave a start card. The reason is
 //       the same instruction. Exit 2 with the reason on stderr, like the other
 //       guards. It applies to every session, Planner or Builder.
 //

@@ -21,7 +21,8 @@
 //     (lib/compact-marks.cjs): compact-stop or token-watch has told it to hand off
 //     and end its turn, so it stops without the gate demand
 //   - skip unless the session's role is "builder" (lib/roles.cjs): Planner
-//     sessions, sessions whose record can't be read, sessions with no record,
+//     sessions (they can't change code, and running the gate in a checkout a
+//     Builder is editing would overwrite its .recon/gate evidence), sessions whose record can't be read, sessions with no record,
 //     and the review agents (agent_type) are never blocked
 //   - skip if the working tree has no uncommitted change outside docs (Markdown,
 //     plain text, docs/, .recon/, .claude/)

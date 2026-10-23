@@ -12,7 +12,12 @@
 # GITLEAKS_CONFIG, GITLEAKS_CONFIG_TOML, and a repository .gitleaks.toml, so
 # none of those can switch rules off. .gitleaksignore and gitleaks:allow still
 # apply (the CI "Sensitive change" check flags changes to them).
-# Fails closed: without gitleaks, the commit stops.
+# The built-in rules come from gitleaks-builtin.toml, committed next to this
+# file, not from a temporary file: the Claude Code sandbox blocks writes to the
+# system temp folder, so creating a temporary file there stopped every Builder
+# commit.
+# Fails closed: without gitleaks, or with that file missing or changed, the
+# commit stops.
 
 if ! command -v gitleaks >/dev/null 2>&1; then
   echo "pre-commit: gitleaks is not installed, so the staged changes can't be scanned for secrets." >&2
@@ -22,7 +27,12 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   exit 1
 fi
 
-config=$(mktemp) || exit 1
-trap 'rm -f "$config"' EXIT
-printf '[extend]\nuseDefault = true\n' > "$config"
+# An empty or rule-less config makes gitleaks scan with no rules and pass, so
+# the file must hold exactly these two lines besides comments and blank lines.
+config="$(dirname "$0")/gitleaks-builtin.toml"
+if [ "$(grep -v -e '^[[:space:]]*#' -e '^[[:space:]]*$' "$config" 2>/dev/null)" != "$(printf '[extend]\nuseDefault = true')" ]; then
+  echo "pre-commit: $config is missing or changed (it must hold only [extend] and useDefault = true), so the staged changes can't be scanned for secrets." >&2
+  exit 1
+fi
+
 gitleaks git --pre-commit --staged --redact --verbose --no-banner --no-color --config "$config"

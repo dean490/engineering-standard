@@ -12,16 +12,21 @@ const ALWAYS_ALLOWED = new Set([
 ]);
 const WRITE_TOOLS = new Set(['Edit', 'Write']);
 const TURN_PREFIX = 'mcp__ccd_turn__';
+// The only tools ToolSearch may load while handing off.
+const LOADABLE = new Set(['mcp__ccd_session__start_session', 'mcp__ccd_session_mgmt__detach_session']);
 
 // lead: the sentence that says why the session hands off, ending in the hook's
 // name; override: how the Owner turns the hook off.
 function message(lead, override) {
   return `${lead} ` +
     '1. Write where you stand into your state file: `.recon/<step>/INDEX.md` for a Builder, the brief file under `~/.claude/plans/` for a Planner. ' +
-    '2. Start your successor with `start_session`: initiation "user_asked", context "fresh", the same model and permission mode as this session (plan for a Planner), ' +
+    '2. Call `start_session` directly: initiation "user_asked", context "fresh", `background: true`, the same model, effort and permission mode as this session (plan for a Planner), ' +
     'prompt "Continue <role> work from <state file>." plus this session\'s start-prompt role lines. ' +
-    '3. Call `detach_session` with the new session\'s id. ' +
-    '4. End your turn with one line naming the successor. ' +
+    'If the call fails for a missing schema, load the tools with `ToolSearch` query `select:mcp__ccd_session__start_session,mcp__ccd_session_mgmt__detach_session` and call it again. ' +
+    'If the app refuses the start because this turn came from another session, call `start_session` again with initiation "own_initiative", the same title, and the same prompt as a complete brief, which puts a start card in the transcript, ' +
+    'then end your turn with one line: "Tap Start on the card \'<title>\' to continue." ' +
+    '3. After a direct start, call `detach_session` with the new session\'s id. ' +
+    '4. After a direct start, end your turn with one line naming the successor. ' +
     `Owner override: \`${override}\`.`;
 }
 
@@ -44,11 +49,22 @@ function writeAllowed(common, payload) {
   return parts.length === 2 && parts[0] !== '' && parts[0] !== '..' && parts[1] === 'INDEX.md';
 }
 
+// True when payload.tool_input.query is `select:<name>[,<name>...]` and every
+// name is a tool a hand-off needs. Keyword queries and anything else are not.
+function searchAllowed(payload) {
+  const ti = payload.tool_input;
+  const query = ti && typeof ti === 'object' ? ti.query : undefined;
+  if (typeof query !== 'string' || !query.startsWith('select:')) return false;
+  const names = query.slice('select:'.length).split(',').map((n) => n.trim());
+  return names.every((n) => LOADABLE.has(n) || (n.startsWith(TURN_PREFIX) && n.length > TURN_PREFIX.length));
+}
+
 // True when a handing-off session may make this call.
 function toolAllowed(common, payload) {
   const name = payload.tool_name;
   if (typeof name !== 'string') return true;
   if (ALWAYS_ALLOWED.has(name) || name.startsWith(TURN_PREFIX)) return true;
+  if (name === 'ToolSearch') return searchAllowed(payload);
   return WRITE_TOOLS.has(name) && writeAllowed(common, payload);
 }
 

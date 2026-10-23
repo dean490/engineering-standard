@@ -4,7 +4,7 @@
     "name": "Dean Hebert"
   },
   "description": "Claude Code plugin marketplace for the engineering standard: one plugin, eng-standard, the standard's enforcement layer.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "plugins": [
     {
       "name": "eng-standard",

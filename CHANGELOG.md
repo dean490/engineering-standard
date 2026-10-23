@@ -2,6 +2,15 @@
 
 All notable changes to the engineering standard. Versions follow `VERSION`; projects pin one and adopt new ones deliberately.
 
+## 0.1.3 (2026-10-23)
+
+Version bump of `VERSION`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, so a project pinned to a tag can adopt the changes below by moving its marketplace `ref` to `v0.1.3`. Hand-off fixes found in the v0.1.2 live check; one bug fix, a card fallback, and the compaction window.
+
+- Bug fix, `plugin/hooks/lib/handoff.cjs` (token-watch and compact-stop, STANDARD 10.1): a handing-off session could not load the deferred `start_session` and `detach_session` tools because `ToolSearch` was denied. `ToolSearch` now passes when its query is `select:<name>[,<name>...]` and every name is one of those two tools or starts with `mcp__ccd_turn__`; every other `ToolSearch` call stays denied. The hand-off message now has the session call `start_session` directly with `background: true` (the app accepts it without loading), and use that `ToolSearch` query only if the call fails for a missing schema.
+- `plugin/hooks/stop-gate.cjs` (comment only): its header comment records that Planner sessions are skipped (the role check already skipped them; a Planner whose role was recorded as Builder is a role-recording matter, not changed here).
+- Card fallback (STANDARD 10.1): the app refuses `start_session` with initiation "user_asked" on a turn that came from another session, which is every turn of a successor. The hand-off message now has the session call `start_session` again with initiation "own_initiative", the same title and prompt, which leaves a start card, and end its turn with "Tap Start on the card '<title>' to continue." `detach_session` applies only after a direct start. No change to the allowed tools.
+- STANDARD 10.2, `templates/.claude/settings.json`, `docs/ADOPTING.md`: `autoCompactWindow` is 200000. Claude Code compacted at 128,020 tokens with a window of 160000 (about 80%), so token-watch at 140k never ran first; 200000 compacts at about 160k. The docs name no fraction.
+
 ## 0.1.2 (2026-10-22)
 
 Version bump of `VERSION`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, so a project pinned to a tag can adopt the change below by moving its marketplace `ref` to `v0.1.2`. Three new hooks in the plugin, a brief check, and a commit gate; nothing else in the plugin changed except the stop gate's exception for the hand-off hooks.

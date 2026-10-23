@@ -8,8 +8,11 @@
 // cache_creation + cache_read tokens, the context the last request carried).
 // At 140000 or more it marks the session (lib/compact-marks.cjs, the "handoff"
 // store) and from then on denies every call except those a hand-off needs
-// (lib/handoff.cjs, shared with compact-stop.cjs), with the hand-off steps as
-// the reason. Exit 2 with the reason on stderr, like the other guards.
+// (lib/handoff.cjs, shared with compact-stop.cjs: reads, the state files,
+// start_session, detach_session, mcp__ccd_turn__ tools, and ToolSearch with a
+// `select:` query naming only those tools), with the hand-off steps as the
+// reason; when the app refuses a "user_asked" start because the turn came from
+// another session, the steps have the session leave a start card instead. Exit 2 with the reason on stderr, like the other guards.
 //
 // Skipped: any call that carries agent_id (a subagent or teammate; the session
 // is the main one), and a payload without a readable transcript_path.

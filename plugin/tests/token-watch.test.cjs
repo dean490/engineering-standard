@@ -7,7 +7,7 @@ const { fixture, runHook, tempRepo, tempDir, writeFiles } = require('./helpers.c
 
 const HOOK = 'token-watch.cjs';
 const SESSION = 's1';
-const REASON = /This session reached about 140k tokens, so it hands off now \(eng-standard token-watch\)\. 1\. Write where you stand into your state file: `\.recon\/<step>\/INDEX\.md` for a Builder, the brief file under `~\/\.claude\/plans\/` for a Planner\. 2\. Start your successor with `start_session`: initiation "user_asked", context "fresh", the same model and permission mode as this session \(plan for a Planner\), prompt "Continue <role> work from <state file>\." plus this session's start-prompt role lines\. 3\. Call `detach_session` with the new session's id\. 4\. End your turn with one line naming the successor\. Owner override: `ENG_STANDARD_TOKEN_WATCH=off`\./;
+const REASON = /This session reached about 140k tokens, so it hands off now \(eng-standard token-watch\)\. 1\. Write where you stand into your state file: `\.recon\/<step>\/INDEX\.md` for a Builder, the brief file under `~\/\.claude\/plans\/` for a Planner\. 2\. Call `start_session` directly: initiation "user_asked", context "fresh", `background: true`.*3\. After a direct start, call `detach_session` with the new session's id\. 4\. After a direct start, end your turn with one line naming the successor\. Owner override: `ENG_STANDARD_TOKEN_WATCH=off`\./;
 
 function assistantLine(usage, extra = {}) {
   return JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [], usage }, ...extra });
@@ -176,4 +176,32 @@ test('token-watch: the stop gate lets a handed-off session stop without its fast
   assertDenied(call(s, 'Bash', { command: 'ls' }), 'Bash');
   assertPasses(stop());
   assert.equal(stop({ ENG_STANDARD_TOKEN_WATCH: 'off' }).json.decision, 'block');
+});
+
+const SELECT_OK = [
+  'select:mcp__ccd_session__start_session,mcp__ccd_session_mgmt__detach_session',
+  'select:mcp__ccd_session__start_session, mcp__ccd_session_mgmt__detach_session ',
+  'select:mcp__ccd_turn__wrap_up',
+  'select:mcp__ccd_session__start_session',
+];
+const SELECT_DENIED = [
+  'start session', 'select:Bash', 'select:mcp__ccd_session__start_session,Bash', 'select:Bash,mcp__ccd_session__start_session',
+  'select:', 'select:,', '', '+ccd session', 'select:mcp__ccd_session__stop_session', 'select:mcp__ccd_turn__', ' select:mcp__ccd_turn__wrap_up',
+];
+
+test('token-watch: ToolSearch passes only for a select: query naming the session tools or turn tools', () => {
+  const s = setup(OVER);
+  for (const q of SELECT_OK) assertPasses(call(s, 'ToolSearch', { query: q, max_results: 5 }));
+  for (const q of SELECT_DENIED) assertDenied(call(s, 'ToolSearch', { query: q, max_results: 5 }), 'ToolSearch');
+  for (const ti of [{}, { query: 5 }, { query: null }, { query: ['select:mcp__ccd_turn__wrap_up'] }]) assertDenied(call(s, 'ToolSearch', ti), 'ToolSearch');
+});
+
+test('token-watch: the hand-off message names the direct start, the card fallback, and the card line', () => {
+  const s = setup(OVER);
+  const r = call(s, 'Bash', { command: 'ls' });
+  assert.match(r.stderr, /2\. Call `start_session` directly: initiation "user_asked", context "fresh", `background: true`/);
+  assert.match(r.stderr, /call `start_session` again with initiation "own_initiative", the same title, and the same prompt as a complete brief/);
+  assert.match(r.stderr, /"Tap Start on the card '<title>' to continue\."/);
+  assert.match(r.stderr, /`ToolSearch` query `select:mcp__ccd_session__start_session,mcp__ccd_session_mgmt__detach_session`/);
+  assert.match(r.stderr, /3\. After a direct start, call `detach_session`/);
 });

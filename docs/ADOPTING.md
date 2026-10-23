@@ -42,11 +42,11 @@ The standard tags each rule by what holds it (`STANDARD.md`, introduction). A **
 
 ```json
 {
-  "autoCompactWindow": 160000
+  "autoCompactWindow": 200000
 }
 ```
 
-- `autoCompactWindow` (100000 to 1000000) makes a session compact at that many tokens of context instead of near the model's limit. What overrides it, and when, is in STANDARD 10.2.
+- `autoCompactWindow` (100000 to 1000000) makes a session compact at about 80% of that many tokens of context instead of near the model's limit (200000 compacts at about 160k, after token-watch acts at 140k). What overrides it, and when, is in STANDARD 10.2.
 - A session starts with tens of thousands of tokens of tool definitions (about 57k in the Owner's measurement: Claude Code's tools about 31k, connector tools about 17k, skills about 6k), and every turn re-sends them. What you can switch off, by where it lives:
   - **Connectors in the Claude desktop app's Code tab.** The app delivers them to the session itself, so no setting file reaches them. Switch them off in the app: **+ > Connectors**, **Manage connectors**, or Settings > Connectors. The session's connector toggle applies to that session only. On claude.ai, the same list is at claude.ai/customize/connectors.
   - **Connectors in the CLI, VS Code, JetBrains, and Agent SDK sessions.** The template sets `"disableClaudeAiConnectors": true` for each project. Set it in `~/.claude/settings.json` to apply to every project (a `true` in any settings file applies), or set the environment variable `ENABLE_CLAUDEAI_MCP_SERVERS=false`. A project that needs those connectors removes the key from its `.claude/settings.json`, and the Owner sets neither of these.

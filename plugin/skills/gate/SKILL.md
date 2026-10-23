@@ -17,5 +17,5 @@ Run the project's gate (STANDARD 2.1) and keep its raw output as evidence (STAND
    node ${CLAUDE_PLUGIN_ROOT}/scripts/run-gate.cjs <arg>
    ```
 
-   The script runs the script from `package.json` with the project's package manager, writes everything it prints to the evidence file, records the result in `.recon/gate/last.json` for the stop gate, starts that file with one `# result:` line (STANDARD 10.3), and prints two lines: the evidence path and the exit code.
+   The script runs the script from `package.json` with the project's package manager, writes everything it prints to the evidence file, records the result in `.recon/gate/last.json` for the stop gate, starts that file with one `# result:` line (STANDARD 2.2), and prints two lines: the evidence path and the exit code.
 3. Reply with those two lines exactly as printed. Don't summarize or interpret the gate output; the file is the evidence. If the exit code isn't `0`, say that the gate failed and point to the file, then find the failure with `tail` or `grep` on it (don't read it whole) and fix it or report it.

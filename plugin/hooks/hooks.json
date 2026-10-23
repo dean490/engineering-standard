@@ -1,5 +1,5 @@
 {
-  "description": "eng-standard guardrails: secret guards, protected paths, commit hygiene, Planner and Critic read-only guards, the token-watch and compact-stop hand-off guards, the web-lookup limit, and the stop gate",
+  "description": "eng-standard guardrails: secret guards, protected paths, commit hygiene, Planner and Critic read-only guards, the brief check and commit gate, the token-watch and compact-stop hand-off guards, the web-lookup limit, and the stop gate",
   "hooks": {
     "PreToolUse": [
       {
@@ -81,6 +81,19 @@
             "command": "node",
             "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs"
+            ],
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/brief-check.cjs"
             ],
             "timeout": 10
           }

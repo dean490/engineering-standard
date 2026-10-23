@@ -48,6 +48,7 @@ test('hooks.json: every hook runs for exactly the events and tools it guards', (
     'planner-readonly.cjs --record-role': { UserPromptSubmit: [...TOOLS].sort() },
     'compact-stop.cjs': { PreToolUse: [...TOOLS].sort(), PreCompact: [...TOOLS].sort(), SessionStart: [...TOOLS].sort() },
     'token-watch.cjs': { PreToolUse: [...TOOLS].sort() },
+    'brief-check.cjs': { PreToolUse: ['Edit', 'Write'] },
     'web-limit.cjs': { PreToolUse: ['WebFetch'] },
     'commit-hygiene.cjs': { PreToolUse: [...SHELL].sort() },
     'critic-readonly.cjs': { PreToolUse: [...SHELL].sort() },

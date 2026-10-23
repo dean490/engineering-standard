@@ -25,7 +25,7 @@ Work is done when its verification gate has passed and the raw output is on file
 
 ## IV. Enforce, don't request
 
-A rule that must always hold is enforced by something that cannot forget: a hook, a permission rule, the sandbox, a required CI check, branch protection, a database constraint, or a security policy. Instruction files hold only what cannot be enforced and what an agent needs in every session. When a written rule is broken twice, it becomes an enforced one.
+A rule that must always hold is enforced by something that cannot forget: a hook, a permission rule, the sandbox, a required CI check, branch protection, a database constraint, or a security policy. Instruction files hold only what cannot be enforced and what an agent needs in every session. When a written rule is broken twice, it becomes an enforced one. Enforce first: a process rule is adopted with its hook or check, or not at all.
 
 ## V. Least privilege, for agents and for apps
 

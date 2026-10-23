@@ -6,8 +6,8 @@ const path = require('path');
 const { fixture, runHook, tempRepo, tempDir, writeFiles } = require('./helpers.cjs');
 
 const HOOK = 'compact-stop.cjs';
-const TAG = 'hook: eng-standard compact-stop';
-const INSTRUCTION = /This session compacted, so it stops here \(eng-standard compact-stop\)\. Write where you stand into `\.recon\/<step>\/INDEX\.md`/;
+const TAG = 'eng-standard compact-stop';
+const INSTRUCTION = /This session compacted, so it stops here \(eng-standard compact-stop\)\. 1\. Write where you stand into your state file: `\.recon\/<step>\/INDEX\.md` for a Builder, the brief file under `~\/\.claude\/plans\/` for a Planner\. 2\. Start your successor with `start_session`.*3\. Call `detach_session` with the new session's id\. 4\. End your turn with one line naming the successor\. Owner override: `ENG_STANDARD_COMPACT_STOP=off`\./;
 const SESSION = 's1';
 
 // A project, a plugin data directory, and a HOME whose ~/.claude/plans exists.
@@ -100,11 +100,11 @@ test('compact-stop: SessionStart compact adds the instruction to a marked sessio
   assert.equal(r.status, 0);
   assert.equal(r.json.hookSpecificOutput.hookEventName, 'SessionStart');
   assert.match(r.json.hookSpecificOutput.additionalContext, INSTRUCTION);
-  assert.match(r.json.hookSpecificOutput.additionalContext, /send your report to the Planner, and end your turn\. A fresh session continues from that file\./);
+  assert.doesNotMatch(r.json.hookSpecificOutput.additionalContext, /Planner, and end your turn|SendMessage/);
   for (const source of ['startup', 'resume', 'clear', 'fork']) assertPasses(sessionStart(s, source));
 });
 
-test('compact-stop: a marked session may read, search, send messages, and write its INDEX', () => {
+test('compact-stop: a marked session may read, search, start and detach its successor, and write its INDEX', () => {
   const s = setup();
   mark(s);
   const index = path.join(s.project, '.recon', 'step-1', 'INDEX.md');
@@ -112,7 +112,8 @@ test('compact-stop: a marked session may read, search, send messages, and write 
   assertPasses(call(s, 'Read', { file_path: path.join(s.project, 'src/app.ts') }));
   assertPasses(call(s, 'Grep', { pattern: 'x' }));
   assertPasses(call(s, 'Glob', { pattern: '**/*.ts' }));
-  assertPasses(call(s, 'SendMessage', { to: 'planner', message: 'done' }));
+  assertPasses(call(s, 'mcp__ccd_session__start_session', { initiation: 'user_asked' }));
+  assertPasses(call(s, 'mcp__ccd_session_mgmt__detach_session', { session_id: 'local_1' }));
   assertPasses(call(s, 'mcp__ccd_turn__wrap_up', { recap: 'stopped' }));
   assertPasses(call(s, 'mcp__ccd_turn__update_plan', { advance: true }));
   assertPasses(call(s, 'Write', { file_path: index, content: '# INDEX\n' }));
@@ -122,7 +123,7 @@ test('compact-stop: a marked session may read, search, send messages, and write 
   assertPasses(call(s, 'Write', { file_path: path.join('.recon', 'step-1', 'INDEX.md'), content: 'x' }, { cwd: s.project }));
 });
 
-test('compact-stop: a marked session is denied Bash, Agent, and writes anywhere else, with the reason', () => {
+test('compact-stop: a marked session is denied Bash, Agent, SendMessage, and writes anywhere else, with the reason', () => {
   const s = setup();
   mark(s);
   assertDenied(call(s, 'Bash', { command: 'ls' }), 'Bash');
@@ -131,7 +132,9 @@ test('compact-stop: a marked session is denied Bash, Agent, and writes anywhere 
   assertDenied(call(s, 'WebFetch', { url: 'https://example.com' }), 'WebFetch');
   assertDenied(call(s, 'NotebookEdit', { notebook_path: path.join(s.project, 'n.ipynb') }), 'NotebookEdit');
   assertDenied(call(s, 'mcp__db__query', { sql: 'select 1' }), 'mcp__db__query');
-  assertDenied(call(s, 'mcp__ccd_session__start_session', {}), 'mcp__ccd_session__start_session');
+  assertDenied(call(s, 'SendMessage', { to: 'planner', message: 'done' }), 'SendMessage');
+  assertDenied(call(s, 'mcp__ccd_session_mgmt__send_message', {}), 'mcp__ccd_session_mgmt__send_message');
+  assertDenied(call(s, 'mcp__ccd_session_mgmt__stop_session', {}), 'mcp__ccd_session_mgmt__stop_session');
   assertDenied(call(s, 'Write', { file_path: path.join(s.project, 'src/app.ts'), content: 'x' }), 'Write');
   assertDenied(call(s, 'Edit', { file_path: path.join(s.project, 'src/app.ts'), old_string: 'a', new_string: 'b' }), 'Edit');
 });
@@ -247,4 +250,23 @@ test('compact-stop: the stop gate lets a marked session stop without its fast-ga
   mark(s);
   assertPasses(stop(s));
   assert.equal(stop(s, { ENG_STANDARD_COMPACT_STOP: 'off' }).json.decision, 'block', 'with compact-stop off the gate applies again');
+});
+
+test('compact-stop: covers Planner sessions and Builder sessions alike', () => {
+  const s = setup();
+  for (const role of ['planner', 'builder']) {
+    fs.mkdirSync(path.join(s.data, 'session-roles'), { recursive: true });
+    fs.writeFileSync(path.join(s.data, 'session-roles', `${SESSION}.json`), JSON.stringify({ session_id: SESSION, role, recorded_at: new Date().toISOString() }));
+    mark(s);
+    assertDenied(call(s, 'Bash', { command: 'ls' }), 'Bash');
+    assertPasses(call(s, 'Write', { file_path: path.join(s.home, '.claude', 'plans', 'BRIEF.md'), content: 'x' }));
+    assertPasses(call(s, 'mcp__ccd_session__start_session', {}));
+  }
+});
+
+test('compact-stop: a token-watch mark does not make compact-stop deny anything', () => {
+  const s = setup();
+  fs.mkdirSync(path.join(s.data, 'handoff'), { recursive: true });
+  fs.writeFileSync(path.join(s.data, 'handoff', `${SESSION}.json`), '{}\n');
+  assertPasses(call(s, 'Bash', { command: 'ls' }));
 });

@@ -1,5 +1,5 @@
 {
-  "description": "eng-standard guardrails: secret guards, protected paths, commit hygiene, Planner and Critic read-only guards, the compact-stop guard, and the stop gate",
+  "description": "eng-standard guardrails: secret guards, protected paths, commit hygiene, Planner and Critic read-only guards, the token-watch and compact-stop hand-off guards, the web-lookup limit, and the stop gate",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,7 +8,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard-read.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/secret-guard-read.cjs"
+            ],
             "timeout": 30
           }
         ]
@@ -19,13 +21,17 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/protect-paths.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/protect-paths.cjs"
+            ],
             "timeout": 30
           },
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/planner-readonly.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/planner-readonly.cjs"
+            ],
             "timeout": 30
           }
         ]
@@ -36,19 +42,25 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/commit-hygiene.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/commit-hygiene.cjs"
+            ],
             "timeout": 30
           },
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/critic-readonly.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/critic-readonly.cjs"
+            ],
             "timeout": 30
           },
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/planner-readonly.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/planner-readonly.cjs"
+            ],
             "timeout": 30
           }
         ]
@@ -59,7 +71,30 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/token-watch.cjs"
+            ],
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs"
+            ],
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "WebFetch|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/web-limit.cjs"
+            ],
             "timeout": 10
           }
         ]
@@ -71,7 +106,10 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/planner-readonly.cjs", "--record-role"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/planner-readonly.cjs",
+              "--record-role"
+            ],
             "timeout": 10
           }
         ]
@@ -83,7 +121,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs"
+            ],
             "timeout": 10
           }
         ]
@@ -95,7 +135,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/compact-stop.cjs"
+            ],
             "timeout": 10
           }
         ]
@@ -108,7 +150,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/secret-redact.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/secret-redact.cjs"
+            ],
             "timeout": 30
           }
         ]
@@ -120,7 +164,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/stop-gate.cjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/stop-gate.cjs"
+            ],
             "timeout": 30
           }
         ]

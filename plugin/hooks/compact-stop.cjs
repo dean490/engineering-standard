@@ -4,7 +4,8 @@
 //
 // A session that runs past its context window compacts again and again; each
 // compaction loses detail and every later turn costs more. The rule is "stop at
-// your first auto-compaction and hand off". This hook enforces it, one script
+// your first auto-compaction and hand off" (token-watch.cjs does the same
+// earlier, at about 140k tokens). This hook enforces it, one script
 // for three events (dispatching on hook_event_name):
 //
 //   PreCompact, trigger "auto": records the session as compacted
@@ -18,9 +19,11 @@
 //       instruction below to Claude's context (additionalContext).
 //   PreToolUse, every tool: when the session is marked, denies every call except
 //       Read, Grep, Glob; Edit and Write on .recon/*/INDEX.md under the project
-//       directory or on anything under ~/.claude/plans/; SendMessage; and tools
-//       whose name starts with mcp__ccd_turn__. The reason is the same
-//       instruction. Exit 2 with the reason on stderr, like the other guards.
+//       directory or on anything under ~/.claude/plans/; start_session and
+//       detach_session; and tools whose name starts with mcp__ccd_turn__ (the
+//       list is in lib/handoff.cjs, shared with token-watch.cjs). The reason is
+//       the same instruction. Exit 2 with the reason on stderr, like the other
+//       guards. It applies to every session, Planner or Builder.
 //
 // The stop gate (stop-gate.cjs) lets a marked session stop without its
 // fast-gate demand.
@@ -29,17 +32,13 @@
 // and it fails open: input it can't parse or a marker it can't check never
 // blocks a call. The Owner can always end the session.
 
-const os = require('os');
-const path = require('path');
+const marks = require('./lib/compact-marks.cjs');
+const handoff = require('./lib/handoff.cjs');
 
-const TAG = '(hook: eng-standard compact-stop)';
-const INSTRUCTION =
-  'This session compacted, so it stops here (eng-standard compact-stop). ' +
-  'Write where you stand into `.recon/<step>/INDEX.md` (a Planner session: its handoff file under `~/.claude/plans/`), ' +
-  'send your report to the Planner, and end your turn. A fresh session continues from that file.';
-const ALWAYS_ALLOWED = new Set(['Read', 'Grep', 'Glob', 'SendMessage']);
-const WRITE_TOOLS = new Set(['Edit', 'Write']);
-const TURN_PREFIX = 'mcp__ccd_turn__';
+const INSTRUCTION = handoff.message(
+  'This session compacted, so it stops here (eng-standard compact-stop).',
+  'ENG_STANDARD_COMPACT_STOP=off'
+);
 
 function allow() {
   process.exit(0);
@@ -53,34 +52,12 @@ function readStdin(callback) {
   process.stdin.on('error', () => allow());
 }
 
-// True when a write to filePath is one a marked session may make: an INDEX.md
-// one level under .recon/ in the project, or anything under ~/.claude/plans/.
-function writeAllowed(common, payload) {
-  const ti = payload.tool_input;
-  const target = ti && typeof ti === 'object' ? ti.file_path : undefined;
-  if (typeof target !== 'string' || target.length === 0) return false;
-  const base = payload.cwd || common.projectDir(payload);
-  const real = common.realpathLoose(path.isAbsolute(target) ? target : path.resolve(base, target));
-
-  const plans = common.realpathLoose(path.join(os.homedir(), '.claude', 'plans'));
-  if (common.isInside(real, plans)) return true;
-
-  const recon = common.realpathLoose(path.join(common.projectDir(payload), '.recon'));
-  if (!common.isInside(real, recon)) return false;
-  const parts = common.toPosix(real).slice(common.toPosix(recon).replace(/\/+$/, '').length + 1).split('/');
-  return parts.length === 2 && parts[0] !== '' && parts[0] !== '..' && parts[1] === 'INDEX.md';
-}
-
 function decideTool(common, payload) {
-  const name = payload.tool_name;
-  if (typeof name !== 'string') return null;
-  if (ALWAYS_ALLOWED.has(name) || name.startsWith(TURN_PREFIX)) return null;
-  if (WRITE_TOOLS.has(name) && writeAllowed(common, payload)) return null;
-  return `Blocked: ${name}\n${INSTRUCTION} ${TAG}`;
+  if (typeof payload.tool_name !== 'string' || handoff.toolAllowed(common, payload)) return null;
+  return `Blocked: ${payload.tool_name}\n${INSTRUCTION}`;
 }
 
 function main(raw) {
-  const marks = require('./lib/compact-marks.cjs');
   if (!marks.enabled()) allow();
   const common = require('./lib/common.cjs');
   const payload = common.parsePayload(raw);
@@ -94,7 +71,7 @@ function main(raw) {
     case 'SessionStart':
       if (payload.source === 'compact' && marks.isMarked(sessionId)) {
         process.stdout.write(JSON.stringify({
-          hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: `${INSTRUCTION} ${TAG}` },
+          hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: INSTRUCTION },
         }));
       }
       return allow();

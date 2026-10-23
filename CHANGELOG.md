@@ -4,12 +4,16 @@ All notable changes to the engineering standard. Versions follow `VERSION`; proj
 
 ## 0.1.2 (2026-10-22)
 
-Version bump of `VERSION`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, so a project pinned to a tag can adopt the change below by moving its marketplace `ref` to `v0.1.2`. A new hook in the plugin; nothing else in the plugin changed except the stop gate's exception for it.
+Version bump of `VERSION`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`, so a project pinned to a tag can adopt the change below by moving its marketplace `ref` to `v0.1.2`. Three new hooks in the plugin; nothing else in the plugin changed except the stop gate's exception for them.
 
-- `plugin/hooks/compact-stop.cjs` (STANDARD 10.1): a session stops at its first auto-compaction. `PreCompact` with `trigger: auto` marks the session (a manual `/compact` does not, and compaction itself is never blocked); `SessionStart` with source `compact` tells a marked session to write its INDEX, report to the Planner, and end its turn; `PreToolUse` then denies every tool call from a marked session except Read, Grep, Glob, SendMessage, `mcp__ccd_turn__*` tools, and Edit or Write on `.recon/<step>/INDEX.md` or under `~/.claude/plans/`. Marks live in `${CLAUDE_PLUGIN_DATA}/compacted/`. `ENG_STANDARD_COMPACT_STOP=off` turns it off, the way `ENG_STANDARD_STOP_GATE=off` does for the stop gate.
-- `plugin/hooks/stop-gate.cjs`: a marked session may stop without the fast-gate demand.
-- `plugin/hooks/lib/compact-marks.cjs` is new; `lib/roles.cjs` exports its file-name helper `safeName`.
-- `docs/ADOPTING.md` (Turning things off) and STANDARD 10.1 describe it.
+- `plugin/hooks/compact-stop.cjs` (STANDARD 10.1): a session stops at its first auto-compaction. `PreCompact` with `trigger: auto` marks the session (a manual `/compact` does not, and compaction itself is never blocked); `SessionStart` with source `compact` tells a marked session to hand off (write its state file, start its successor with `start_session`, detach it with `detach_session`, end its turn); `PreToolUse` then denies every tool call from a marked session except Read, Grep, Glob, `start_session`, `detach_session`, `mcp__ccd_turn__*` tools, and Edit or Write on `.recon/<step>/INDEX.md` or under `~/.claude/plans/`. Marks live in `${CLAUDE_PLUGIN_DATA}/compacted/`. `ENG_STANDARD_COMPACT_STOP=off` turns it off, the way `ENG_STANDARD_STOP_GATE=off` does for the stop gate.
+- `plugin/hooks/token-watch.cjs` (STANDARD 10.1): before each tool call of a main session (a call with `agent_id` is skipped) it reads the latest assistant entry's usage from the transcript tail (input + cache creation + cache read tokens). At 140000 or more it marks the session and denies every call except the ones compact-stop allows, with the hand-off steps as the reason. `ENG_STANDARD_TOKEN_WATCH=off` turns it off; a number sets the threshold. It fails open on any read or parse error.
+- `plugin/hooks/web-limit.cjs` (STANDARD 10.8): counts WebFetch and WebSearch calls per session (calls with `agent_id` are not counted) and denies the 4th and later, telling the session to start a background research subagent. `ENG_STANDARD_WEB_LIMIT=off` or a number overrides it.
+- `plugin/hooks/lib/handoff.cjs` is new: the hand-off message and the allowed-call rule shared by token-watch and compact-stop. compact-stop now allows `start_session` and `detach_session` instead of `SendMessage`, and its message is the hand-off steps instead of "send your report to the Planner". It applies to Planner and Builder sessions alike.
+- `plugin/hooks/stop-gate.cjs`: a marked session (compaction or token-watch) may stop without the fast-gate demand.
+- `plugin/hooks/lib/compact-marks.cjs` is new (a store factory; token-watch marks live in `${CLAUDE_PLUGIN_DATA}/handoff/`); `lib/roles.cjs` exports its file-name helper `safeName`.
+- STANDARD 10.2 and `templates/.claude/settings.json`: `autoCompactWindow` is 160000, so token-watch at 140k acts before auto-compaction.
+- `docs/ADOPTING.md` (Turning things off) and STANDARD 10.1 and 10.8 describe them.
 
 ## 0.1.1 (2026-10-16)
 
